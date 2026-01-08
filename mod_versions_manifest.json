@@ -6,10 +6,11 @@
     "graphics": []
   },
   "02_EconomyMod": {
-    "version": "1.7.0",
+    "version": "1.7.1",
     "download_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/02_EconomyMod.rb",
     "changelog_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Economy%20Mod.md",
-    "graphics": []
+    "graphics": [],
+    "dependencies": [{"name": "01_Mod_Settings", "version": "3.0.0"}]
   },
   "03_PrivateKurayShop": {
     "version": "1.0.0",

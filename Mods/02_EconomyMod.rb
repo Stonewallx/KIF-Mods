@@ -2,7 +2,7 @@
 # Economy Mod
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.7
+# Script Version: 1.7.1 
 # Author: Stonewall
 #========================================
 
@@ -2386,7 +2386,6 @@ if defined?(ModSettingsMenu::PCModActions)
     :condition => proc { |pkmn, selected = nil, heldpoke = nil|
       next false unless defined?(EconomyMod::PCPokemonSelling)
       next false unless EconomyMod::PCPokemonSelling.enabled?
-      # Only show if Pokemon is not being held/moved
       next false if heldpoke
       value = EconomyMod::PCPokemonSelling.calculate_value(pkmn)
       next value > 0
@@ -2410,7 +2409,7 @@ end
 # BST BOOST SECTION
 # Adds a PC Mod Action to permanently boost all six base stats (effective final stats)
 # of a single Pokémon by +5 each (one-time purchase per Pokémon).
-#############################
+
 module EconomyMod
   module BSTBoost
     DEFAULT_PRICE = 30000
@@ -2471,11 +2470,9 @@ if defined?(Pokemon)
     unless method_defined?(:economymod_bstboost_orig_calc_stats)
       alias economymod_bstboost_orig_calc_stats calc_stats
       def calc_stats(*args)
-        # Store HP percentage BEFORE calling original calc_stats
-        hp_percentage = nil
-        if @totalhp && @totalhp > 0 && @hp
-          hp_percentage = @hp.to_f / @totalhp
-        end
+        # Store HP BEFORE calc_stats to know if Pokemon was fainted
+        old_hp = @hp
+        old_totalhp = @totalhp
         
         economymod_bstboost_orig_calc_stats(*args)
         
@@ -2493,7 +2490,6 @@ if defined?(Pokemon)
               end
             end
             
-            # Calculate boosts for each stat
             hp_boost = (raised_stat == :HP || lowered_stat == :HP) ? nature_boost : base_boost
             atk_boost = (raised_stat == :ATTACK || lowered_stat == :ATTACK) ? nature_boost : base_boost
             def_boost = (raised_stat == :DEFENSE || lowered_stat == :DEFENSE) ? nature_boost : base_boost
@@ -2501,24 +2497,27 @@ if defined?(Pokemon)
             spdef_boost = (raised_stat == :SPECIAL_DEFENSE || lowered_stat == :SPECIAL_DEFENSE) ? nature_boost : base_boost
             speed_boost = (raised_stat == :SPEED || lowered_stat == :SPEED) ? nature_boost : base_boost
 
-            # Apply boosts to stats
-            @totalhp = @totalhp + hp_boost if @totalhp
+            if @totalhp && hp_boost > 0
+              if old_hp == 0
+                @totalhp = @totalhp + hp_boost
+                @hp = 0
+              else
+                hpDiff = @totalhp - @hp
+                
+                @totalhp = @totalhp + hp_boost
+                
+                calculated_hp = @totalhp - hpDiff
+                @hp = calculated_hp > 0 ? calculated_hp : 0
+              end
+            end
+            
             @attack  = @attack  + atk_boost if @attack
             @defense = @defense + def_boost if @defense
             @spatk   = @spatk   + spatk_boost if @spatk
             @spdef   = @spdef   + spdef_boost if @spdef
             @speed   = @speed   + speed_boost if @speed
-            
-            # Restore HP based on the percentage from BEFORE calc_stats was called
-            if hp_percentage && @totalhp && @totalhp > 0
-              @hp = (@totalhp * hp_percentage).round
-              @hp = @totalhp if @hp > @totalhp
-              # Only prevent HP from going below 1 if the Pokemon was alive before (hp_percentage > 0)
-              @hp = 1 if @hp < 1 && @totalhp > 0 && hp_percentage > 0
-            end
           end
         rescue => e
-          # Silent error handling to prevent crashes
         end
       end
     end
@@ -2877,7 +2876,7 @@ begin
     )
 
     begin
-      ModSettingsMenu.register_option(btn)
+      ModSettingsMenu.register_option(btn, :economy_mod, "Economy & Rewards")
     rescue
     end
   end
