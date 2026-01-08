@@ -7,8 +7,8 @@
   },
   "02_EconomyMod": {
     "version": "1.7.0",
-    "download_url": "",
-    "changelog_url": "",
+    "download_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/02_EconomyMod.rb",
+    "changelog_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Economy%20Mod.md",
     "graphics": []
   },
   "03_PrivateKurayShop": {
