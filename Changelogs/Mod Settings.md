@@ -1,6 +1,7 @@
 Mod Settings - Changelog
 Version 3.1.1 (January 8, 2026)
 ---------------------------
+[FIXED]
 - Fixed issue where the Uncategorized category wasn't showing.
 
 Version 3.1.0 (January 8, 2026)
