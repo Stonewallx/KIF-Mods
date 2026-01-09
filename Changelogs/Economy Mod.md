@@ -1,4 +1,9 @@
 Economy Mod - Changelog
+Version 1.7.2 (January 8, 2026)
+---------------------------
+[CHANGED]
+- Updated Mod Settings category to `Economy` due to the category rename.
+
 Version 1.7.1 (January 8, 2026)
 ---------------------------
 [NEW]

@@ -1,16 +1,16 @@
 ﻿{
   "01_Mod_Settings": {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "download_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     "changelog_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     "graphics": []
   },
   "02_EconomyMod": {
-    "version": "1.7.1",
+    "version": "1.7.2",
     "download_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/02_EconomyMod.rb",
     "changelog_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Economy%20Mod.md",
     "graphics": [],
-    "dependencies": [{"name": "01_Mod_Settings", "version": "3.0.0"}]
+    "dependencies": [{"name": "01_Mod_Settings", "version": "3.1.0"}]
   },
   "03_PrivateKurayShop": {
     "version": "1.0.0",

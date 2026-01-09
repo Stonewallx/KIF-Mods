@@ -1,4 +1,17 @@
 Mod Settings - Changelog
+Version 3.1.0 (January 8, 2026)
+---------------------------
+[NEW]
+- Improved debug logging and will start to have all mods output debug logs to ModsDebug.txt. All mods will also show they loaded in that log file.
+- Added support for Dropdown options to support multiple rows once above 3 options with automatic line spacing so there's no overlapping with other rows when using the proper flags.
+- Added the Multiplayer Addons category.
+[CHANGED]
+- Updated the mod to use a simpler APIs for mod registrations so that it's easier for mod authors to register options into the menu.
+- Added a comprehensive documentation to the discord to download for mod authors, contains working examples also.
+- Changed the name of some of the categories so that they look cleaner and not so long for most.
+- Cleaned up spacing and look of options in the Mod Settings Scenes, to make use of this, make sure to use the @modsettings_menu flag for submenu scenes.
+- Cleaned up Update/Auto-update screens so that they're better to look at and quicker to see the information.
+
 Version 3.0.0 (January 8, 2026)
 ---------------------------
 [NEW]
