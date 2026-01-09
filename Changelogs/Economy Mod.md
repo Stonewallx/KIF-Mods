@@ -1,4 +1,8 @@
 Economy Mod - Changelog
+Version 1.8.0 (January 8, 2026)
+---------------------------
+- Rewrote Economy Mod submenu to utilize new Mod Settings Menu features and cleaner look. 
+
 Version 1.7.2 (January 8, 2026)
 ---------------------------
 [CHANGED]
