@@ -2,12 +2,11 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.1.2
+# Script Version: 3.1.3
 # Author: Stonewall
 #========================================
 #
 # DOCUMENTATION: See "Mod_Settings_Documentation.md" for full guide
-
 # Log mod initialization
 begin
   mod_debug_path = "ModsDebug.txt"
@@ -1306,6 +1305,16 @@ end
 # ============================================================================
 class ModUpdatesScene < PokemonOption_Scene
   include ModSettingsSpacing
+  
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def pbGetOptions(inloadscreen = false)
     options = []
     options << CheckUpdatesOption.new
@@ -1347,6 +1356,16 @@ end
 # ============================================================================
 class PresetSettingsScene < PokemonOption_Scene
   include ModSettingsSpacing
+  
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def pbGetOptions(inloadscreen = false)
     options = []
     options << SavePresetOption.new
@@ -1672,7 +1691,7 @@ class Window_UpdateResults < Window_PokemonOption
         xpos += colwidth
         pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, online_version,
                          @selBaseColor, @selShadowColor)
-      elsif optionname =~ /^(.+?)\|(.+?)\|$/
+      elsif optionname =~ /^(.+?)\|(.*)\|$/
         # Format: "Mod Name|1.0.0|" - Up to date or not tracked (only 2 columns)
         mod_name = $1
         version = $2
@@ -1747,6 +1766,15 @@ class Window_UpdateResults < Window_PokemonOption
 end
 
 class UpdateResultsScene < PokemonOption_Scene
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def initialize(results)
     super()
     @results = results
@@ -1830,10 +1858,22 @@ class UpdateResultsScene < PokemonOption_Scene
     
     # Not Tracked section (BLUE)
     if @results[:not_tracked].any?
-      header = ColoredCategoryHeaderOption.new("Not Tracked", "Mods not in manifest", :blue)
+      header = ColoredCategoryHeaderOption.new("Not Tracked", "Mods not registered for updates", :blue)
       options << header
       @results[:not_tracked].each do |mod|
-        text = sprintf("%s|%s|", mod[:name], mod[:version])
+        version_display = mod[:version].to_s.empty? ? "N/A" : mod[:version]
+        text = sprintf("%s|%s|", mod[:name], version_display)
+        opt = ButtonOption.new(text, proc {}, " ")
+        options << opt
+      end
+    end
+    
+    # Check Failed section (GRAY/WHITE)
+    if @results[:check_failed].any?
+      header = ColoredCategoryHeaderOption.new("Update Check Failed", "Could not fetch online version", :white)
+      options << header
+      @results[:check_failed].each do |mod|
+        text = sprintf("%s|%s|Error", mod[:name], mod[:version])
         opt = ButtonOption.new(text, proc {}, " ")
         options << opt
       end
@@ -1921,7 +1961,7 @@ class UpdateResultsScene < PokemonOption_Scene
     # Check dependencies first
     if mod[:dependencies] && mod[:dependencies].any?
       missing_deps = []
-      local_mods = ModSettingsMenu::UpdateCheck::VersionCheck.collect
+      local_mods = ModSettingsMenu::VersionCheck.collect
       
       mod[:dependencies].each do |dep|
         dep_name = dep.is_a?(Hash) ? dep["name"] : dep
@@ -2044,7 +2084,7 @@ class UpdateResultsScene < PokemonOption_Scene
     
     # Set custom title
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
-      _INTL("Update Check Results"), 0, 0, Graphics.width, 64, @viewport)
+      _INTL("Mod List"), 0, 0, Graphics.width, 64, @viewport)
     
     # Apply menu colors
     if @sprites["option"] && @sprites["option"].respond_to?(:use_color_theme=)
@@ -2171,6 +2211,15 @@ end
 # Shows a list of mods with updates available using the same format as Update Results
 # ============================================================================
 class AutoUpdateNotificationScene < PokemonOption_Scene
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def initialize(updates_available)
     super()
     @updates_available = updates_available
@@ -2256,7 +2305,7 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
     
     # Set custom title
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
-      _INTL("Mod Auto-Update Results"), 0, 0, Graphics.width, 64, @viewport)
+      _INTL("Auto-Update"), 0, 0, Graphics.width, 64, @viewport)
     
     # Set custom textbox message
     if @sprites["textbox"]
@@ -2380,33 +2429,12 @@ class PokemonOption_Scene
         options << btn
       end
     end
-    # Legacy code block - kept for compatibility but currently does nothing
-    begin
-      st = ModSettingsMenu.storage rescue nil
-      if st && st.is_a?(Hash)
-        st.keys.each do |k|
-          next if false
-        end
-      end
-    rescue
-    end
     return options
   end
 
   # Opens the Mod Settings menu in a fade transition
   def openModSettings()
     return if !@mod_menu
-    # Guard: avoid opening Mod Settings while PC Storage scene is active
-    begin
-      if defined?($scene) && $scene && (
-        $scene.class.name.to_s.include?("PokemonStorageScene") ||
-        ($scene.respond_to?(:cursormode) && $scene.cursormode.to_s == "multiselect")
-      )
-        @mod_menu = false
-        return
-      end
-    rescue
-    end
     pbFadeOutIn {
       scene = ModSettingsScene.new
       screen = PokemonOptionScreen.new(scene)
@@ -2744,6 +2772,15 @@ end
 class ModSettingsScene < PokemonOption_Scene
   include ModSettingsSpacing
   attr_accessor :search_term
+  
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
   
   # Override to show nothing when no description instead of "Speech Frame 12"
   def getDefaultDescription
@@ -3734,195 +3771,215 @@ end
 # ============================================================================
 # UPDATE CHECK MODULE
 # ============================================================================
-# Checks for mod updates by comparing local versions to online manifest
-# ============================================================================
-# Adds a simple utility action to list all detected mods and their versions.
-# Version is read from the top of each .rb mod file using:
-# Script Version: X.Y.Z
-# Add this to your mod file then inform Stonewall to include it in the manifest.
+# Collects local mod versions from self-registration AND file headers
 # ============================================================================
 # Update Check Tiers:
 # Major Updates Available (Red Color) - X is different from latest.
 # Minor Updates Available (Orange Color) - Y is different from latest
 # Hotfixes Available (Yellow Color) - Z is different from latest.
 # Up to Date (Green Color) - Version matches latest.
-# Not Tracked: Mod is not in the online manifest yet. Contact Stonewall to add it.
+# Not Tracked: Mod has not self-registered for auto-updates (may have version header).
 # ============================================================================
 module ModSettingsMenu
   module VersionCheck
-    SEARCH_DIRS = ["Mods"]
+    SEARCH_DIRS = ["Mods", "Mods/Stone's Mods"]
     MAX_HEADER_LINES = 40
-
-    # Collects all .rb mod files from known mod folders
-    def self.find_mod_files
-      files = []
-      SEARCH_DIRS.each do |dir|
-        begin
-          Dir.glob(File.join(dir, "**", "*.rb")) { |f| files << f }
-        rescue
-        end
-      end
-      return files
-    end
-
-    # Extract a mod display name and version string from file contents
-    def self.extract_metadata(path)
-      name = File.basename(path, ".rb")
-      folder = begin
-        parts = path.split(/[\\\/]/)
-        parts[0] || ""
-      rescue
-        ""
-      end
-
-      version = nil
-      begin
-        count = 0
-        File.foreach(path) do |line|
-          count += 1
-          break if count > MAX_HEADER_LINES
-          # Only match: # Script Version: x.y.z
-          if line =~ /^\s*#\s*Script Version:\s*([^\r\n#]+)/i
-            version = $1.to_s.strip
-            break
-          end
-        end
-      rescue
-      end
-
-      return { name: name, version: version, path: path, folder: folder }
-    end
-
-    # Returns an array of unique mods with disambiguated names if needed
+    
+    # Returns an array of mods with version info from registration and/or file headers
+    # Each entry: { name: filename, version: "X.Y.Z", path: full_path, display_name: "Mod Name", registered: true/false }
     def self.collect
-      mods = find_mod_files.map { |p| extract_metadata(p) }
-      # Only keep mods with a Script Version header
-      mods.select! { |m| m[:version] && !m[:version].empty? }
-      # Disambiguate duplicate names across folders
-      counts = Hash.new(0)
-      mods.each { |m| counts[m[:name]] += 1 }
-      mods.each do |m|
-        if counts[m[:name]] > 1 && m[:folder] && !m[:folder].empty?
-          m[:display_name] = sprintf("%s (%s)", m[:name], m[:folder])
-        else
-          m[:display_name] = m[:name]
+      mods = []
+      registered = ModRegistry.all
+      scanned_files = []
+      
+      # First, add all registered mods
+      registered.each do |filename, info|
+        path = find_mod_path(filename)
+        scanned_files << path.downcase if path
+        
+        mod_name = File.basename(filename, ".rb")
+        mods << {
+          name: mod_name,
+          version: info[:version],
+          path: path,
+          display_name: info[:name] || mod_name,
+          folder: "",
+          registered: true
+        }
+      end
+      
+      # Then scan directories for mods with version headers (not already registered)
+      SEARCH_DIRS.each do |dir|
+        next unless Dir.exist?(dir)
+        
+        Dir.glob(File.join(dir, "*.rb")).each do |file_path|
+          next if scanned_files.include?(file_path.downcase)
+          
+          filename = File.basename(file_path)
+          mod_name = File.basename(filename, ".rb")
+          
+          # Extract version from file header (if present)
+          version = extract_version_from_header(file_path)
+          
+          mods << {
+            name: mod_name,
+            version: version || "",
+            path: File.expand_path(file_path),
+            display_name: mod_name,
+            folder: "",
+            registered: false
+          }
         end
       end
-      # Sort alphabetically
+      
+      # Sort alphabetically by display name
       mods.sort_by! { |m| m[:display_name].downcase }
       return mods
     end
-  end
-  
-
-  module UpdateCheck
-    # URL to the online mod versions manifest (JSON format)
-    MANIFEST_URL = "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/mod_versions_manifest.json"
     
-    # ============================================================================
-    # MANIFEST FORMAT
-    # ============================================================================
-    # The manifest JSON file supports two formats for each mod entry:
-    #
-    # 1. Simple format (version string only):
-    #    "ModName": "3.0.1"
-    #
-    # 2. Full format (with download URLs and graphics):
-    #    "ModName": {
-    #      "version": "3.0.1",
-    #      "download_url": "https://raw.githubusercontent.com/user/repo/main/mods/ModName.rb",
-    #      "changelog_url": "https://raw.githubusercontent.com/user/repo/main/changelogs/modname.txt",
-    #      "graphics": [
-    #        {
-    #          "url": "https://raw.githubusercontent.com/user/repo/main/graphics/sprite1.png",
-    #          "path": "Graphics/Battlers/sprite1.png"
-    #        },
-    #        {
-    #          "url": "https://raw.githubusercontent.com/user/repo/main/graphics/sprite2.png",
-    #          "path": "Graphics/Characters/sprite2.png"
-    #        }
-    #      ]
-    #    }
-    #
-    # Fields:
-    # - version (required): Semantic version string (X.Y or X.Y.Z)
-    # - download_url (optional): Direct URL to download the .rb file
-    # - changelog_url (optional): URL to text file with version history
-    # - graphics (optional): Array of graphics files with url and relative path
-    #
-    # Note: "ModName" must exactly match the .rb filename (without extension)
-    # ============================================================================
-    
-    # Parse version string to components (e.g., "3.0.1" -> [[3, 0, 1], true])
-    # Returns [[major, minor, patch], has_patch] where has_patch indicates if Z was explicitly specified
-    def self.parse_version(version_str)
-      return [[0, 0, 0], false] if version_str.nil? || version_str.empty?
-      parts = version_str.split('.')
-      major = parts[0].to_i
-      minor = parts[1].to_i if parts.length > 1
-      minor ||= 0
-      patch = parts[2].to_i if parts.length > 2
-      patch ||= 0
-      has_patch = parts.length > 2  # Track if patch was explicitly specified
-      return [[major, minor, patch], has_patch]
+    # Extract version from file header (# Script Version: X.Y.Z)
+    def self.extract_version_from_header(file_path)
+      return nil unless File.exist?(file_path)
+      
+      line_count = 0
+      File.open(file_path, "r") do |file|
+        file.each_line do |line|
+          line_count += 1
+          break if line_count > MAX_HEADER_LINES
+          
+          # Look for: # Script Version: X.Y.Z
+          if line =~ /^#\s*Script Version:\s*(\d+\.\d+(?:\.\d+)?)/i
+            return $1
+          end
+        end
+      end
+      
+      return nil
+    rescue
+      return nil
     end
     
-    # Fetch the online manifest and parse JSON
-    # Uses the game's built-in HTTPLite module
-    def self.fetch_manifest
+    # Find the actual file path for a registered mod
+    # Searches common mod directories
+    def self.find_mod_path(filename)
+      SEARCH_DIRS.each do |dir|
+        path = File.join(dir, filename)
+        return File.expand_path(path) if File.exist?(path)
+      end
+      
+      # Return a default path if not found (for new installs)
+      return File.expand_path(File.join("Mods", filename))
+    end
+  end
+  
+  # ============================================================================
+  # MOD REGISTRATION SYSTEM
+  # ============================================================================
+  # Allows mods to self-register their update information
+  # ============================================================================
+  module ModRegistry
+    @registered_mods = {}
+    
+    # Register a mod's update information
+    # @param info [Hash] Mod information
+    #   :name [String] Display name (e.g., "Economy Mod")
+    #   :file [String] Filename (e.g., "02_EconomyMod.rb")
+    #   :version [String] Current version (e.g., "1.8.0")
+    #   :download_url [String] URL to download updates
+    #   :changelog_url [String] URL to view changelog
+    #   :graphics [Array] Array of graphics files with :url and :path
+    #   :dependencies [Array] Array of hashes with :name and :version
+    def self.register(info)
+      return unless info.is_a?(Hash) && info[:file]
+      
+      @registered_mods[info[:file]] = {
+        name: info[:name],
+        file: info[:file],
+        version: info[:version] || "0.0.0",
+        download_url: info[:download_url],
+        changelog_url: info[:changelog_url],
+        graphics: info[:graphics] || [],
+        dependencies: info[:dependencies] || []
+      }
+      
+      ModSettingsMenu.debug_log("ModSettings: Registered mod - #{info[:file]} v#{info[:version]}")
+    end
+    
+    # Get all registered mods
+    def self.all
+      @registered_mods
+    end
+    
+    # Get a specific registered mod by filename
+    def self.get(filename)
+      @registered_mods[filename]
+    end
+    
+    # Check if a mod is registered
+    def self.registered?(filename)
+      @registered_mods.key?(filename)
+    end
+    
+    # Clear all registered mods (for testing)
+    def self.clear
+      @registered_mods = {}
+    end
+  end
+
+  module UpdateCheck
+    # Fetch the remote version from a mod's download URL
+    # Parses the registration block to extract the version
+    # Returns version string or nil on error
+    def self.fetch_remote_version(url)
+      return nil unless url
+      
       begin
-        ModSettingsMenu.debug_log("ModSettings: Fetching manifest from: #{MANIFEST_URL}")
+        ModSettingsMenu.debug_log("ModSettings: Fetching remote version from: #{url}")
         
-        # HTTPLite.get returns a hash with :status and :body keys
-        response = HTTPLite.get(MANIFEST_URL)
+        response = HTTPLite.get(url)
         
         if response.is_a?(Hash) && response[:status] == 200
-          # Get response body
-          body = response[:body]
+          content = response[:body]
           
-          # Remove BOM (Byte Order Mark) if present at start of file
-          body = body.sub(/^\xEF\xBB\xBF/, '') if body
-          
-          # Parse JSON from response body using MiniJSON (game's built-in parser)
-          manifest = MiniJSON.parse(body)
-          ModSettingsMenu.debug_log("ModSettings: Parsed manifest type: #{manifest.class}")
-          
-          # Validate that manifest is a Hash
-          if manifest.is_a?(Hash)
-            ModSettingsMenu.debug_log("ModSettings: Manifest loaded successfully with #{manifest.keys.length} mods")
-            return manifest
-          else
-            ModSettingsMenu.debug_log("ModSettings: Error: Parsed manifest is not a Hash, got #{manifest.class}: #{manifest.inspect}")
-            return nil
+          # Parse the registration block to extract version
+          # Look for: ModRegistry.register(
+          if content =~ /ModRegistry\.register\s*\(/
+            # Extract the hash content between register( and the closing )
+            # This regex captures the content between parentheses
+            if content =~ /ModRegistry\.register\s*\(\s*({[^}]*}|[^)]*)\s*\)/m
+              reg_block = $1
+              
+              # Extract version from the registration block
+              # Look for: version: "X.Y.Z"
+              if reg_block =~ /version:\s*["']([^"']+)["']/
+                version = $1
+                ModSettingsMenu.debug_log("ModSettings: Found remote version: #{version}")
+                return version
+              end
+            end
           end
+          
+          ModSettingsMenu.debug_log("ModSettings: Could not find version in remote registration block")
+          return nil
         else
           status = response.is_a?(Hash) ? response[:status] : "unknown"
-          ModSettingsMenu.debug_log("ModSettings: Failed to fetch manifest. Status: #{status}")
+          ModSettingsMenu.debug_log("ModSettings: Failed to fetch remote file, status: #{status}")
           return nil
         end
       rescue => e
-        # Error during download or JSON parsing
-        ModSettingsMenu.debug_log("ModSettings: Error fetching manifest: #{e.class} - #{e.message}")
-        ModSettingsMenu.debug_log("ModSettings: Backtrace: #{e.backtrace.first(3).join("\n")}")
+        ModSettingsMenu.debug_log("ModSettings: Error fetching remote version: #{e.class} - #{e.message}")
         return nil
       end
     end
     
-    # Compare local mods with online manifest
+    # Compare local mods with registered mod information
     def self.check_updates
       # Get local mod versions
       local_mods = VersionCheck.collect
       return { error: "No local mods found." } if local_mods.nil? || local_mods.empty?
       
-      # Fetch online manifest
-      manifest = fetch_manifest
-      
-      # Check if manifest returned an error
-      if manifest.is_a?(Hash) && manifest.key?(:error)
-        return manifest
-      end
-      
-      return { error: "Could not connect to update server. Check ModsDebug.txt for details." } if manifest.nil?
+      # Get registered mods (local registrations)
+      registered_mods = ModRegistry.all
       
       results = {
         up_to_date: [],
@@ -3930,33 +3987,35 @@ module ModSettingsMenu
         minor_updates: [],
         major_updates: [],
         developer_version: [],
-        not_tracked: []
+        not_tracked: [],
+        check_failed: []  # Mods where remote version check failed
       }
       
       # Only loop through mods the user has installed locally
       local_mods.each do |mod|
-        mod_name = mod[:name]
+        mod_name = mod[:name]  # Filename without extension (e.g., "02_EconomyMod")
+        mod_file = "#{mod_name}.rb"  # Full filename with extension
         
-        # Check if this user's mod is in the manifest
-        if manifest.key?(mod_name)
-          manifest_entry = manifest[mod_name]
+        # Check if this mod is registered for auto-updates
+        if mod[:registered] && registered_mods.key?(mod_file)
+          reg = registered_mods[mod_file]
           
-          # Parse manifest entry - can be string (version only) or hash (version + urls)
-          if manifest_entry.is_a?(String)
-            online_version = manifest_entry
-            download_url = nil
-            changelog_url = nil
-            graphics = nil
-            dependencies = nil
-          elsif manifest_entry.is_a?(Hash)
-            online_version = manifest_entry["version"]
-            download_url = manifest_entry["download_url"]
-            changelog_url = manifest_entry["changelog_url"]
-            graphics = manifest_entry["graphics"]
-            dependencies = manifest_entry["dependencies"]
-          else
-            # Invalid manifest entry
-            results[:not_tracked] << { name: mod[:display_name], version: mod[:version] }
+          download_url = reg[:download_url]
+          changelog_url = reg[:changelog_url]
+          graphics = reg[:graphics]
+          dependencies = reg[:dependencies]
+          
+          # Fetch the actual online version from the remote file
+          online_version = fetch_remote_version(download_url)
+          
+          # If we couldn't fetch the online version, add to failed list
+          unless online_version
+            ModSettingsMenu.debug_log("ModSettings: Failed to fetch remote version for #{mod_file}")
+            results[:check_failed] << {
+              name: mod[:display_name],
+              version: mod[:version],
+              url: download_url
+            }
             next
           end
           
@@ -3984,7 +4043,7 @@ module ModSettingsMenu
           
           # Check version differences using semantic versioning
           if local_major > online_major || local_minor > online_minor || local_patch > online_patch
-            # Local version is newer than manifest - developer version
+            # Local version is newer than registered - developer version
             results[:developer_version] << update_info
           elsif local_major < online_major
             # Major version different (X.y.z)
@@ -3996,20 +4055,33 @@ module ModSettingsMenu
             # Local has explicit patch and it's behind
             results[:hotfixes] << update_info
           elsif !local_has_patch && online_patch > 0
-            # Local has no patch (e.g., "3.0") but manifest has a real patch (e.g., "3.0.1")
+            # Local has no patch (e.g., "3.0") but registered has a real patch (e.g., "3.0.1")
             results[:hotfixes] << update_info
           else
             # All versions match - still include full info for changelog access
             results[:up_to_date] << update_info
           end
         else
-          # User has this mod but it's not tracked in the manifest
+          # User has this mod but it's not registered
           results[:not_tracked] << { name: mod[:display_name], version: mod[:version] }
         end
       end
-      # Note: We never loop through manifest to show mods user doesn't have
       
       return results
+    end
+    
+    # Parse version string to components (e.g., "3.0.1" -> [[3, 0, 1], true])
+    # Returns [[major, minor, patch], has_patch] where has_patch indicates if Z was explicitly specified
+    def self.parse_version(version_str)
+      return [[0, 0, 0], false] if version_str.nil? || version_str.empty?
+      parts = version_str.split('.')
+      major = parts[0].to_i
+      minor = parts[1].to_i if parts.length > 1
+      minor ||= 0
+      patch = parts[2].to_i if parts.length > 2
+      patch ||= 0
+      has_patch = parts.length > 2  # Track if patch was explicitly specified
+      return [[major, minor, patch], has_patch]
     end
     
     # Format results into a readable message
@@ -4896,6 +4968,15 @@ end
 
 # Mod Settings Color Scene
 class ModSettingsColorScene < PokemonOption_Scene
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def initOptionsWindow
     # Use custom window class that shows colors
     optionsWindow = Window_PokemonOption_Color.new(@PokemonOptions, 0,
@@ -5053,6 +5134,16 @@ end
 # ============================================================================
 class RegistrationExamplesScene < PokemonOption_Scene
   include ModSettingsSpacing
+  
+  # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def pbGetOptions(inloadscreen = false)
     options = []
     
@@ -5170,4 +5261,21 @@ if defined?(ModSettingsMenu)
     },
     category: "Debug & Developer"
   })
+end
+
+# ============================================================================
+# AUTO-UPDATE SELF-REGISTRATION
+# ============================================================================
+# Register this mod for auto-updates
+# ============================================================================
+if defined?(ModSettingsMenu::ModRegistry)
+  ModSettingsMenu::ModRegistry.register(
+    name: "Mod Settings",
+    file: "01_Mod_Settings.rb",
+    version: "3.1.3",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
+    graphics: [],
+    dependencies: []
+  )
 end

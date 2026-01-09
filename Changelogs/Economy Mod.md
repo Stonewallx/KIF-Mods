@@ -1,4 +1,12 @@
 Economy Mod - Changelog
+Version 1.8.1 (January 9, 2026)
+---------------------------
+[NEW]
+- Added auto-update registration information.
+
+[FIXED]
+- Fixed transition issue for menu/submenus.
+
 Version 1.8.0 (January 8, 2026)
 ---------------------------
 [NEW]

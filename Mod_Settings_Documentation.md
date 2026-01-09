@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.1.2  
+**Script Version:** 3.1.3
 **Author:** Stonewall
 ---
 
@@ -868,9 +868,124 @@ ModSettingsMenu.register_option(button, :my_mod_submenu, "Quality of Life")
 
 ## Update & Auto-Update Support
 
-### Version Header
+### Version Format
 
-To make your mod compatible with the auto-update system, add a header at the top of your mod file with at least this information:
+Use semantic versioning for all mod versions:
+**Format:** `X.Y.Z`
+- **X** = Major version (breaking changes, incompatible updates, huge updates)
+- **Y** = Minor version (new features, backwards compatible)
+- **Z** = Patch version (bug fixes, small tweaks)
+
+**Examples:**
+- `1.0.0` - Initial release
+- `1.1.0` - Added new features
+- `1.1.1` - Fixed bugs in 1.1.0
+- `2.0.0` - Major rewrite with breaking changes
+
+**Update Detection:**
+- Major updates (X different): Red - significant changes
+- Minor updates (Y different): Orange - new features  
+- Hotfixes (Z different): Yellow - bug fixes
+- Up to date: Green - current version
+- Not tracked: Mod has version header but no registration, or no version at all
+
+### Version Display Options
+
+The update checker will detect and display your mod in three ways:
+
+**1. Self-Registered Mods (Recommended)**
+- Add a registration block to your mod (see below)
+- **Appears in:** Update categories (Up to Date, Updates Available, etc.)
+- **Features:** Auto-update, dependency checking, changelog access
+- **Version from:** Registration block
+
+**2. Version Header Only**
+- Add a version header to your mod but no registration
+- **Appears in:** "Not Tracked" section with version displayed
+- **Features:** Version visibility only, no auto-update
+- **Version from:** File header `# Script Version: X.Y.Z`
+
+**3. No Version Information**
+- Mod has neither registration nor version header
+- **Appears in:** "Not Tracked" section with no version
+- **Features:** Shows mod exists but version unknown
+
+### Self-Registration for Auto-Updates
+
+To enable auto-updates for your mod, add a self-registration block at the **end of your mod file**:
+
+```ruby
+# ============================================================================
+# AUTO-UPDATE SELF-REGISTRATION
+# ============================================================================
+# Register this mod for auto-updates
+# ============================================================================
+if defined?(ModSettingsMenu::ModRegistry)
+  ModSettingsMenu::ModRegistry.register(
+    name: "My Mod Name",
+    file: "MyModName.rb",
+    version: "1.0.0",
+    download_url: "https://raw.githubusercontent.com/user/repo/main/Mods/MyModName.rb",
+    changelog_url: "https://raw.githubusercontent.com/user/repo/main/Changelogs/MyModName.md",
+    graphics: [],
+    dependencies: []
+  )
+end
+```
+
+**How Version Checking Works:**
+1. The update checker scans your Mods folder for all .rb files
+2. For registered mods, it downloads the remote file from `download_url`
+3. It parses the registration block in the downloaded file to get the online version
+4. Compares local version vs online version to determine if an update is available
+5. If update available, user can download and install automatically
+6. For non-registered mods, it reads the version header (if present) and displays in "Not Tracked"
+
+**Field Descriptions:**
+- `name` (required): Display name shown in the update menu
+- `file` (required): Exact filename including .rb extension
+- `version` (required): Semantic version string (X.Y.Z)
+- `download_url` (required): Direct URL to download the .rb file for auto-updates
+- `changelog_url` (optional): URL to changelog file (markdown or text)
+- `graphics` (optional): Array of graphics files with download URL and game path
+- `dependencies` (optional): Array of required mods with minimum versions
+
+**Priority System:**
+If a mod has both a self-registration block and a version header, the **registration takes priority**. The mod will appear in update categories (Up to Date, Updates Available, etc.) using the registration version, and the version header is ignored.
+
+**Example with Graphics and Dependencies:**
+```ruby
+if defined?(ModSettingsMenu::ModRegistry)
+  ModSettingsMenu::ModRegistry.register(
+    name: "Advanced Battle System",
+    file: "05_AdvancedBattle.rb",
+    version: "2.3.1",
+    download_url: "https://raw.githubusercontent.com/user/repo/main/Mods/05_AdvancedBattle.rb",
+    changelog_url: "https://raw.githubusercontent.com/user/repo/main/Changelogs/AdvancedBattle.md",
+    graphics: [
+      {
+        url: "https://raw.githubusercontent.com/user/repo/main/Graphics/UI/battle_hud.png",
+        path: "Graphics/Pictures/battle_hud.png"
+      }
+    ],
+    dependencies: [
+      {name: "01_Mod_Settings", version: "3.1.0"},
+      {name: "04_CoreSystem", version: "1.5.0"}
+    ]
+  )
+end
+```
+
+**Setup Steps:**
+1. Host your mod on GitHub or similar service with raw file access
+2. Add the self-registration block at the end of your mod file
+3. **Important:** When you release an update, increment the version number in the registration block
+4. Push the updated file to your repository
+5. Users' mod settings will detect the version difference and offer to auto-update if they have it on.
+
+### Optional Version Header (For Backward Compatibility)
+
+If you want your mod to display a version in "Not Tracked" without full auto-update support, add this header within the first 40 lines of your file:
 
 ```ruby
 #========================================
@@ -880,73 +995,16 @@ To make your mod compatible with the auto-update system, add a header at the top
 #========================================
 ```
 
-**Version Format:**
-- Use semantic versioning: `X.Y.Z`
-  - X = Major version (breaking changes)
-  - Y = Minor version (new features)
-  - Z = Patch version (bug fixes)
-- Must be within the first 40 lines of the file
-- Format: `# Script Version: X.Y.Z`
+**Note:** This header is optional. The primary version source is the registration block. Mods with only a header will appear in "Not Tracked" but will still show their version number.
 
-**Update Detection:**
-- Major updates (X different): Red - significant changes
-- Minor updates (Y different): Orange - new features
-- Hotfixes (Z different): Yellow - bug fixes
-- Up to date: Green - current version
-- Not tracked: Mod not in manifest yet
-
-### Adding to Manifest
-
-To enable auto-updates for your mod:
-1. Add version header to your mod file
-2. Host your mod preferably on GitHub or similar
-3. Contact Stonewall to add your mod to the manifest with direct download URL, changelog url, graphics urls/paths, and any depencies.
-
-**Field Descriptions:**
-- `version` (required): Semantic version string (X.Y.Z)
-- `download_url` (optional): Direct URL to download the .rb file
-- `changelog_url` (optional): URL to text file with version history
-- `graphics` (optional): Array of graphics files with download URL and game path
-  - `url`: Direct download link to the graphic file
-  - `path`: Relative path where file should be installed (from game root)
-- `dependencies` (optional): Array of required mods with minimum versions
-  - `mod`: Name of required mod (must match .rb filename)
-  - `version`: Minimum required version (auto-update checks before updating)
-
-**Complete Example:**
-```json
-"MyModName": {
-  "version": "1.2.3",
-  "download_url": "https://raw.githubusercontent.com/user/repo/main/MyModName.rb",
-  "changelog_url": "https://raw.githubusercontent.com/user/repo/main/changelog.txt",
-  "graphics": [
-    {
-      "url": "https://raw.githubusercontent.com/user/repo/main/Graphics/Battlers/sprite1.png",
-      "path": "Graphics/Battlers/sprite1.png"
-    },
-    {
-      "url": "https://raw.githubusercontent.com/user/repo/main/Graphics/UI/icon.png",
-      "path": "Graphics/Pictures/icon.png"
-    }
-  ],
-  "dependencies": [
-    {
-      "mod": "ModSettingsMenu",
-      "version": "3.1.0"
-    },
-    {
-      "mod": "AnotherRequiredMod",
-      "version": "1.5.0"
-    }
-  ]
-}
-```
 
 **Notes:**
-- ModName must exactly match the .rb filename (without extension)
+- The registration happens automatically when your mod loads
 - Graphics are automatically downloaded and installed during auto-update
 - Dependencies are checked before updating - update blocked if requirements not met
-- Use simple format if you only want version tracking without auto-update
+- If you don't include `download_url`, the mod will be tracked for version checking only (no auto-download)
+- Keep your registration section organized at the end of the file with all other mod registrations
+- **Remember:** Update the version number in your registration block when releasing new versions!
 
 ---
 

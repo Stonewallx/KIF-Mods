@@ -2,7 +2,7 @@
 # Economy Mod
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.8.0
+# Script Version: 1.8.1
 # Author: Stonewall
 #========================================
 
@@ -2619,6 +2619,15 @@ end
 class EconomyModScene < PokemonOption_Scene
   include ModSettingsSpacing if defined?(ModSettingsSpacing)
   
+  # Menu Transition Fix: Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def pbGetOptions(inloadscreen = false)
     options = []
     
@@ -2846,4 +2855,20 @@ begin
     $MOD_SETTINGS_PENDING_REGISTRATIONS << reg_proc
   end
 rescue
+end
+# ============================================================================
+# AUTO-UPDATE SELF-REGISTRATION
+# ============================================================================
+# Register this mod for auto-updates
+# ============================================================================
+if defined?(ModSettingsMenu::ModRegistry)
+  ModSettingsMenu::ModRegistry.register(
+    name: 'Economy Mod',
+    file: '02_EconomyMod.rb',
+    version: '1.8.1',
+    download_url: 'https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/02_EconomyMod.rb',
+    changelog_url: 'https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Economy%20Mod.md',
+    graphics: [],
+    dependencies: [{name: '01_Mod_Settings', version: '3.1.3'}]
+  )
 end
