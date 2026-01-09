@@ -1,6 +1,6 @@
 ﻿{
   "01_Mod_Settings": {
-    "version": "3.1.0",
+    "version": "3.1.1",
     "download_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     "changelog_url": "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     "graphics": []

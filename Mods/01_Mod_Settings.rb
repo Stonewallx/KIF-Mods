@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.1.0
+# Script Version: 3.1.1
 # Author: Stonewall
 #========================================
 #
@@ -2931,7 +2931,7 @@ class ModSettingsScene < PokemonOption_Scene
         # Check if this category has any items
         has_items = false
         if cat[:name] == "Uncategorized"
-          has_items = uncategorized.any?
+          has_items = uncategorized.any? || (categorized["Uncategorized"] && categorized["Uncategorized"].any?)
         else
           has_items = categorized[cat[:name]] && categorized[cat[:name]].any?
         end
@@ -2946,8 +2946,14 @@ class ModSettingsScene < PokemonOption_Scene
         # Add settings if not collapsed
         if cat[:name] == "Uncategorized"
           unless cat[:collapsed]
+            # Add items from both uncategorized array and categorized["Uncategorized"]
             uncategorized.each do |item|
               options << item[:option]
+            end
+            if categorized["Uncategorized"]
+              categorized["Uncategorized"].each do |item|
+                options << item[:option]
+              end
             end
           end
         elsif categorized[cat[:name]] && !cat[:collapsed]
