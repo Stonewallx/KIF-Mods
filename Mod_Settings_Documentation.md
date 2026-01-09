@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.1.0  
+**Script Version:** 3.1.2  
 **Author:** Stonewall
 ---
 
@@ -654,7 +654,7 @@ def pbStartScene(inloadscreen = false)
   
   # Enable color theme and enhanced UI features
   if @sprites["option"]
-    @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+    @sprites["option"].use_color_theme = true if @sprites["option"].respond_to?(:use_color_theme=)
     @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
   end
   

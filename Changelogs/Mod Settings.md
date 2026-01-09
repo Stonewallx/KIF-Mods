@@ -1,4 +1,15 @@
 Mod Settings - Changelog
+Version 3.1.2 (January 8, 2026)
+---------------------------
+[NEW]
+- Added descriptions to several options that were missing them.
+
+[CHANGED]
+- Replaced use_blue_colors flag with use_color_theme flag so it's more appropriate for the behavior now. Updated documentation to reflect this change.
+
+[FIXED]
+- Fixed issue of submenu's not using the pbFadeOutIn blocks, which resulted in see through backgrounds and overlapping texts. 
+
 Version 3.1.1 (January 8, 2026)
 ---------------------------
 [FIXED]

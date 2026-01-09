@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.1.1
+# Script Version: 3.1.2
 # Author: Stonewall
 #========================================
 #
@@ -1138,9 +1138,11 @@ class CheckUpdatesOption < ButtonOption
           pbMessage(_INTL(results[:error])) if defined?(pbMessage)
         else
           # Open the update results scene
-          scene = UpdateResultsScene.new(results)
-          screen = PokemonOptionScreen.new(scene)
-          screen.pbStartScreen
+          pbFadeOutIn {
+            scene = UpdateResultsScene.new(results)
+            screen = PokemonOptionScreen.new(scene)
+            screen.pbStartScreen
+          }
         end
       },
       _INTL("View all mods and check for updates")
@@ -1322,9 +1324,9 @@ class ModUpdatesScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Mod Updates"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Enable purple colors and custom spacing
+    # Enable color theme and custom spacing
     if @sprites["option"]
-      @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].use_color_theme = true if @sprites["option"].respond_to?(:use_color_theme=)
       @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
     end
     
@@ -1363,9 +1365,9 @@ class PresetSettingsScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Save & Load Presets"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Enable purple colors and custom spacing
+    # Enable color theme and custom spacing
     if @sprites["option"]
-      @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].use_color_theme = true if @sprites["option"].respond_to?(:use_color_theme=)
       @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
     end
     
@@ -2045,8 +2047,8 @@ class UpdateResultsScene < PokemonOption_Scene
       _INTL("Update Check Results"), 0, 0, Graphics.width, 64, @viewport)
     
     # Apply menu colors
-    if @sprites["option"] && @sprites["option"].respond_to?(:use_blue_colors=)
-      @sprites["option"].use_blue_colors = true
+    if @sprites["option"] && @sprites["option"].respond_to?(:use_color_theme=)
+      @sprites["option"].use_color_theme = true
     end
     
     # Initialize values
@@ -2262,8 +2264,8 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
     end
     
     # Apply menu colors
-    if @sprites["option"] && @sprites["option"].respond_to?(:use_blue_colors=)
-      @sprites["option"].use_blue_colors = true
+    if @sprites["option"] && @sprites["option"].respond_to?(:use_color_theme=)
+      @sprites["option"].use_color_theme = true
     end
     
     # Initialize values
@@ -2449,7 +2451,7 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
   $modsettings_blue_color_patched = true
   
   class Window_PokemonOption
-    attr_accessor :use_blue_colors
+    attr_accessor :use_color_theme
     attr_accessor :modsettings_menu
     attr_accessor :nameBaseColor
     attr_accessor :nameShadowColor
@@ -2461,7 +2463,7 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
       def initialize(options, x, y, width, height)
         modsettings_original_initialize(options, x, y, width, height)
         # Apply color theme if enabled
-        apply_modsettings_theme if @use_blue_colors
+        apply_modsettings_theme if @use_color_theme
       end
     end
     
@@ -2482,9 +2484,9 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
       end
     end
     
-    # Allow setting purple colors after initialization
-    def use_blue_colors=(value)
-      @use_blue_colors = value
+    # Allow setting color theme after initialization
+    def use_color_theme=(value)
+      @use_color_theme = value
       apply_modsettings_theme if value
       refresh if respond_to?(:refresh)
     end
@@ -2998,9 +3000,9 @@ class ModSettingsScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Mod Settings"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Enable blue colors for this menu
-    if @sprites["option"] && @sprites["option"].respond_to?(:use_blue_colors=)
-      @sprites["option"].use_blue_colors = true
+    # Enable color theme for this menu
+    if @sprites["option"] && @sprites["option"].respond_to?(:use_color_theme=)
+      @sprites["option"].use_color_theme = true
     end
     
     # Initialize all option values from storage
@@ -3081,7 +3083,7 @@ class ModSettingsScene < PokemonOption_Scene
                                                       Graphics.width, Graphics.height - @sprites["title"].height - textbox_height)
       @sprites["option"].viewport = @viewport
       @sprites["option"].visible = true
-      @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].use_color_theme = true if @sprites["option"].respond_to?(:use_color_theme=)
       @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
       
       # Initialize values
@@ -4911,7 +4913,7 @@ class ModSettingsColorScene < PokemonOption_Scene
     theme_names = COLOR_THEMES.keys.map { |k| COLOR_THEMES[k][:name] }
     current_theme = ModSettingsMenu.get(:modsettings_color_theme) || 0
     
-    opt = EnumOption2.new(
+    opt = EnumOption.new(
       _INTL("Menu Theme"),
       theme_names,
       proc { ModSettingsMenu.get(:modsettings_color_theme) || 0 },
@@ -4921,12 +4923,13 @@ class ModSettingsColorScene < PokemonOption_Scene
         if @sprites["option"]
           apply_color_theme(@sprites["option"], value)
         end
-      }
+      },
+      _INTL("Choose the color theme for the Mod Settings menu")
     )
     options << opt
     
     # Create enum option for category color theme selection
-    opt2 = EnumOption2.new(
+    opt2 = EnumOption.new(
       _INTL("Category Theme"),
       theme_names,
       proc { ModSettingsMenu.get(:modsettings_category_theme) || 3 },  # Default to red (index 3)
@@ -4936,7 +4939,8 @@ class ModSettingsColorScene < PokemonOption_Scene
         if @sprites["option"]
           @sprites["option"].refresh
         end
-      }
+      },
+      _INTL("Choose the color theme for category headers")
     )
     options << opt2
     
@@ -5002,9 +5006,11 @@ class ModSettingsColorOption < ButtonOption
     super(
       _INTL("Mod Settings Colors"),
       proc {
-        scene = ModSettingsColorScene.new
-        screen = PokemonOptionScreen.new(scene)
-        screen.pbStartScreen
+        pbFadeOutIn {
+          scene = ModSettingsColorScene.new
+          screen = PokemonOptionScreen.new(scene)
+          screen.pbStartScreen
+        }
       },
       _INTL("Customize the color theme for Mod Settings")
     )
@@ -5055,7 +5061,8 @@ class RegistrationExamplesScene < PokemonOption_Scene
       _INTL("Test Toggle"),
       [_INTL("Off"), _INTL("On")],
       proc { ModSettingsMenu.get(:test_toggle) || 0 },
-      proc { |value| ModSettingsMenu.set(:test_toggle, value) }
+      proc { |value| ModSettingsMenu.set(:test_toggle, value) },
+      _INTL("Example toggle option - Switch between Off and On")
     )
     
     # Enum Example - 7 options to test multi-row layout (3 rows)
@@ -5063,7 +5070,8 @@ class RegistrationExamplesScene < PokemonOption_Scene
       _INTL("Test Dropdown"),
       ["Option A", "Option B", "Option C", "Option D", "Option E", "Option F", "Option G"],
       proc { ModSettingsMenu.get(:test_enum) || 0 },
-      proc { |value| ModSettingsMenu.set(:test_enum, value) }
+      proc { |value| ModSettingsMenu.set(:test_enum, value) },
+      _INTL("Example dropdown with multiple options - Displays in rows")
     )
     
     # Number Example
@@ -5079,7 +5087,8 @@ class RegistrationExamplesScene < PokemonOption_Scene
       _INTL("Test Slider (0-100 by 5)"),
       0, 100, 5,
       proc { ModSettingsMenu.get(:test_slider) || 50 },
-      proc { |value| ModSettingsMenu.set(:test_slider, value) }
+      proc { |value| ModSettingsMenu.set(:test_slider, value) },
+      _INTL("Example slider option - Adjust value between 0 and 100")
     )
     
     # Button Example
@@ -5098,7 +5107,8 @@ class RegistrationExamplesScene < PokemonOption_Scene
         msg += "Slider: #{slider_val}"
         
         pbMessage(msg) if defined?(pbMessage)
-      }
+      },
+      _INTL("Example button option - Displays all current test values")
     )
     
     return auto_insert_spacers(options)
@@ -5152,9 +5162,11 @@ if defined?(ModSettingsMenu)
     type: :button,
     description: "View working examples of all registration types",
     on_press: proc {
-      scene = RegistrationExamplesScene.new
-      screen = PokemonOptionScreen.new(scene)
-      screen.pbStartScreen
+      pbFadeOutIn {
+        scene = RegistrationExamplesScene.new
+        screen = PokemonOptionScreen.new(scene)
+        screen.pbStartScreen
+      }
     },
     category: "Debug & Developer"
   })

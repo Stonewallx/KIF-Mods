@@ -2,7 +2,7 @@
 # Economy Mod
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.7.2 
+# Script Version: 1.8.0
 # Author: Stonewall
 #========================================
 
@@ -2609,276 +2609,234 @@ if defined?(PokemonSummary_Scene)
   end
 end
 
+# ============================================================================
+# END OF SETTINGS REGISTRATION
+# ============================================================================
+
+# ============================================================================
+# ECONOMY MOD SUBMENU SCENE
+# ============================================================================
+class EconomyModScene < PokemonOption_Scene
+  include ModSettingsSpacing if defined?(ModSettingsSpacing)
+  
+  def pbGetOptions(inloadscreen = false)
+    options = []
+    
+    # PokeMart Sales Toggle
+    options << EnumOption.new(
+      _INTL("PokeMart Sales"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_sales) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_sales, value) },
+      _INTL("Enable random sales on items in PokeMarts")
+    )
+    
+    # PokeMart Markups Toggle
+    options << EnumOption.new(
+      _INTL("PokeMart Markups"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_markups) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_markups, value) },
+      _INTL("Enable random price markups on items in PokeMarts")
+    )
+    
+    # Initial Money Toggle
+    options << EnumOption.new(
+      _INTL("Initial Money"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_starting_money_enabled) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_starting_money_enabled, value) },
+      _INTL("Give custom starting money when beginning a new game")
+    )
+    
+    # Initial Money Amount
+    options << SliderOption.new(
+      _INTL("Initial Money Amount"),
+      0, 10000, 500,
+      proc { ModSettingsMenu.get(:economymod_starting_money) || 3000 },
+      proc { |value| ModSettingsMenu.set(:economymod_starting_money, value) },
+      _INTL("Amount of money to start with in a new game")
+    )
+    
+    # Battle Money Toggle
+    options << EnumOption.new(
+      _INTL("Battle Money Multiplier"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_battle_money_enabled) || 0 },
+      proc { |value| ModSettingsMenu.set(:economymod_battle_money_enabled, value) },
+      _INTL("Multiply money earned from trainer battles")
+    )
+    
+    # Battle Money Multiplier
+    options << SliderOption.new(
+      _INTL("Battle Money x Amount"),
+      1, 10, 1,
+      proc { ModSettingsMenu.get(:economymod_battle_money_multiplier) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_battle_money_multiplier, value) },
+      _INTL("Multiplier for battle money rewards (1x to 10x)")
+    )
+    
+    # PokeVial Cost Toggle
+    options << EnumOption.new(
+      _INTL("PokeVial Cost"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_pokevial_cost_enabled) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_pokevial_cost_enabled, value) },
+      _INTL("Charge money each time the PokeVial is used")
+    )
+    
+    # PokeVial Cost Amount
+    options << SliderOption.new(
+      _INTL("PokeVial Cost Per Use"),
+      0, 10000, 100,
+      proc { ModSettingsMenu.get(:economymod_pokevial_cost) || 500 },
+      proc { |value| ModSettingsMenu.set(:economymod_pokevial_cost, value) },
+      _INTL("Cost in Pokedollars for each PokeVial use")
+    )
+    
+    # Bonus Gifts Toggle
+    options << EnumOption.new(
+      _INTL("Bonus Gifts"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_bonus_gifts_enabled) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_bonus_gifts_enabled, value) },
+      _INTL("Enable bonus items given at various points when buying from the shop")
+    )
+    
+    # Custom Prices Toggle
+    options << EnumOption.new(
+      _INTL("Custom Item Prices"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_custom_prices_enabled) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_custom_prices_enabled, value) },
+      _INTL("Use custom pricing for certain items")
+    )
+    
+    # PC Pokemon Selling Toggle
+    options << EnumOption.new(
+      _INTL("PC Pokemon Selling"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:economymod_pc_selling_enabled) || 1 },
+      proc { |value| ModSettingsMenu.set(:economymod_pc_selling_enabled, value) },
+      _INTL("Allow selling Pokemon directly from the PC for money")
+    )
+    
+    # Nature Change Price
+    options << SliderOption.new(
+      _INTL("Nature Change Price"),
+      0, 10000, 100,
+      proc { ModSettingsMenu.get(:economymod_nature_change_price) || 500 },
+      proc { |value| ModSettingsMenu.set(:economymod_nature_change_price, value) },
+      _INTL("Cost to change a Pokemon's nature at the PC")
+    )
+    
+    # Reset EVs Price
+    options << SliderOption.new(
+      _INTL("Reset EVs Price"),
+      0, 10000, 100,
+      proc { ModSettingsMenu.get(:economymod_reset_evs_price) || 1000 },
+      proc { |value| ModSettingsMenu.set(:economymod_reset_evs_price, value) },
+      _INTL("Cost to reset all EVs for a Pokemon at the PC")
+    )
+    
+    # Insta-Hatch Price
+    options << SliderOption.new(
+      _INTL("Insta-Hatch Price"),
+      0, 10000, 100,
+      proc { ModSettingsMenu.get(:economymod_insta_hatch_price) || 1000 },
+      proc { |value| ModSettingsMenu.set(:economymod_insta_hatch_price, value) },
+      _INTL("Cost to instantly hatch an egg at the PC")
+    )
+    
+    # Friendship Boost Price
+    options << SliderOption.new(
+      _INTL("Friendship Boost Price"),
+      0, 10000, 100,
+      proc { ModSettingsMenu.get(:economymod_friendship_boost_price) || 5000 },
+      proc { |value| ModSettingsMenu.set(:economymod_friendship_boost_price, value) },
+      _INTL("Cost to max out a Pokemon's friendship at the PC")
+    )
+    
+    options = auto_insert_spacers(options) if defined?(ModSettingsSpacing) && respond_to?(:auto_insert_spacers)
+    return options
+  end
+  
+  def pbStartScene(inloadscreen = false)
+    super
+    
+    # Set custom title
+    @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
+      _INTL("Economy Mod Settings"), 0, 0, Graphics.width, 64, @viewport)
+    
+    # Apply current color theme and modsettings_menu flag
+    if @sprites["option"]
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
+      
+      if defined?(ModSettingsMenu) && defined?(COLOR_THEMES)
+        theme_index = ModSettingsMenu.get(:modsettings_color_theme) || 0
+        theme_key = COLOR_THEMES.keys[theme_index]
+        if theme_key
+          theme = COLOR_THEMES[theme_key]
+          if theme[:base] && theme[:shadow]
+            @sprites["option"].nameBaseColor = theme[:base]
+            @sprites["option"].nameShadowColor = theme[:shadow]
+            @sprites["option"].selBaseColor = theme[:base]
+            @sprites["option"].selShadowColor = theme[:shadow]
+          end
+        end
+      end
+    end
+    
+    # Initialize values
+    for i in 0...@PokemonOptions.length
+      @sprites["option"][i] = (@PokemonOptions[i].get || 0)
+    end
+    @sprites["option"].refresh
+    
+    pbFadeInAndShow(@sprites) { pbUpdate }
+  end
+end
+
 begin
   reg_proc = proc do
     next unless defined?(ModSettingsMenu)
-    ModSettingsMenu.ensure_storage
-    st = ModSettingsMenu.storage
-    begin
-      st[:economymod_sales] = 1 if st[:economymod_sales].nil?
-      st[:economymod_markups] = 1 if st[:economymod_markups].nil?
-      st[:economymod_starting_money_enabled] = 1 if st[:economymod_starting_money_enabled].nil?
-      st[:economymod_starting_money] = (EconomyMod::InitialMoney::DEFAULT_STARTING_MONEY rescue 3000) if st[:economymod_starting_money].nil?
-      st[:economymod_battle_money_enabled] = 1 if st[:economymod_battle_money_enabled].nil?
-      bm_default = (EconomyMod::BattleMoney::DEFAULT_BATTLE_MONEY_MULTIPLIER.to_i rescue 1)
-      bm_default = 1 if bm_default < 1
-      bm_default = 10 if bm_default > 10
-      st[:economymod_battle_money_multiplier] = bm_default if st[:economymod_battle_money_multiplier].nil?
-      st[:economymod_pokevial_cost_enabled] = 1 if st[:economymod_pokevial_cost_enabled].nil?
-      st[:economymod_pokevial_cost] = (EconomyMod::PokeVialCost::DEFAULT_COST_PER_USE rescue 300) if st[:economymod_pokevial_cost].nil?
-      st[:economymod_bonus_gifts_enabled] = (EconomyMod::BonusGifts::ENABLED ? 1 : 0) if st[:economymod_bonus_gifts_enabled].nil?
-      st[:economymod_custom_prices_enabled] = (EconomyMod::CustomPrices::ENABLED ? 1 : 0) if st[:economymod_custom_prices_enabled].nil?
-      st[:economymod_pc_selling_enabled] = (EconomyMod::PCPokemonSelling::ENABLED ? 1 : 0) if st[:economymod_pc_selling_enabled].nil?
-      st[:economymod_nature_change_price] = (EconomyMod::NatureChange::DEFAULT_PRICE rescue 5000) if st[:economymod_nature_change_price].nil?
-      st[:economymod_reset_evs_price] = (EconomyMod::ResetEVs::DEFAULT_PRICE rescue 1000) if st[:economymod_reset_evs_price].nil?
-      st[:economymod_insta_hatch_price] = (EconomyMod::InstaHatch::DEFAULT_PRICE rescue 1000) if st[:economymod_insta_hatch_price].nil?
-      st[:economymod_friendship_boost_price] = (EconomyMod::FriendshipBoost::DEFAULT_PRICE rescue 500) if st[:economymod_friendship_boost_price].nil?
-    rescue
-    end
-
-    btn = ButtonOption.new(
-      _INTL("Economy Mod"),
-      proc do
-        build_cmds = proc do
-          sales = ModSettingsMenu.get(:economymod_sales) || 1
-          markups = ModSettingsMenu.get(:economymod_markups) || 1
-          sm_enabled = ModSettingsMenu.get(:economymod_starting_money_enabled) || 1
-          starting_money = ModSettingsMenu.get(:economymod_starting_money) || (EconomyMod::InitialMoney::DEFAULT_STARTING_MONEY rescue 3000)
-          bm_enabled = ModSettingsMenu.get(:economymod_battle_money_enabled)
-          bm_enabled = 1 if bm_enabled.nil?
-          bm_mult = ModSettingsMenu.get(:economymod_battle_money_multiplier)
-          bm_mult = (EconomyMod::BattleMoney::DEFAULT_BATTLE_MONEY_MULTIPLIER.to_i rescue 1) if bm_mult.nil?
-          bm_mult = bm_mult.to_i
-          bm_mult = 1 if bm_mult < 1
-          bm_mult = 10 if bm_mult > 10
-          pv_enabled = ModSettingsMenu.get(:economymod_pokevial_cost_enabled) || 1
-          pv_cost = ModSettingsMenu.get(:economymod_pokevial_cost) || (EconomyMod::PokeVialCost::DEFAULT_COST_PER_USE rescue 300)
-          gifts_enabled = ModSettingsMenu.get(:economymod_bonus_gifts_enabled)
-          gifts_enabled = (EconomyMod::BonusGifts::ENABLED ? 1 : 0) if gifts_enabled.nil?
-          custom_prices = ModSettingsMenu.get(:economymod_custom_prices_enabled)
-          custom_prices = (EconomyMod::CustomPrices::ENABLED ? 1 : 0) if custom_prices.nil?
-          pc_selling = ModSettingsMenu.get(:economymod_pc_selling_enabled)
-          pc_selling = (EconomyMod::PCPokemonSelling::ENABLED ? 1 : 0) if pc_selling.nil?
-          nat_price = ModSettingsMenu.get(:economymod_nature_change_price) || (EconomyMod::NatureChange::DEFAULT_PRICE rescue 5000)
-          reset_evs_price = ModSettingsMenu.get(:economymod_reset_evs_price) || (EconomyMod::ResetEVs::DEFAULT_PRICE rescue 1000)
-          insta_hatch_price = ModSettingsMenu.get(:economymod_insta_hatch_price) || (EconomyMod::InstaHatch::DEFAULT_PRICE rescue 1000)
-          friendship_boost_price = ModSettingsMenu.get(:economymod_friendship_boost_price) || (EconomyMod::FriendshipBoost::DEFAULT_PRICE rescue 500)
-
-          [
-            _INTL("PokeMart Sales: {1}", sales == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("PokeMart Markups: {1}", markups == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("Initial Money: {1}", sm_enabled == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("Set Initial Money: ${1}", starting_money.to_s_formatted),
-            _INTL("Battle Money: {1}", bm_enabled == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("Battle Money Multiplier: x{1}", bm_mult),
-            _INTL("PokeVial Cost: {1}", pv_enabled == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("PokeVial Cost Per Use: ${1}", pv_cost.to_s_formatted),
-            _INTL("Bonus Gifts: {1}", gifts_enabled == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("Custom Prices: {1}", custom_prices == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("PC Pokemon Selling: {1}", pc_selling == 1 ? _INTL("On") : _INTL("Off")),
-            _INTL("Nature Change Price: ${1}", nat_price.to_s_formatted),
-            _INTL("Reset EVs Price: ${1}", reset_evs_price.to_s_formatted),
-            _INTL("Insta-Hatch Price: ${1}", insta_hatch_price.to_s_formatted),
-            _INTL("Friendship Boost Price: ${1}", friendship_boost_price.to_s_formatted),
-            _INTL("Back")
-          ]
-        end
-
-        cmds = build_cmds.call
-        cmdwindow = Window_CommandPokemon.new(cmds)
-        cmdwindow.z = 99999
-        last_idx = (defined?(ModSettingsMenu) ? (ModSettingsMenu.get(:economymod_menu_last_index) || 0) : 0)
-        last_idx = 0 if !last_idx.is_a?(Integer)
-        cmdwindow.index = [[last_idx, 0].max, cmds.length - 1].min
-        cmdwindow.visible = true
-        cmdwindow.x = Graphics.width - cmdwindow.width
-        cmdwindow.y = 0
-
-        loop do
-          if Graphics.respond_to?(:fast_forward_update)
-            Graphics.fast_forward_update
-          else
-            Graphics.update
-          end
-          Input.update
-          cmdwindow.update
-
-          idx = cmdwindow.index
-          if Input.trigger?(Input::LEFT) || Input.trigger?(Input::RIGHT)
-            case idx
-            when 0
-              cur = ModSettingsMenu.get(:economymod_sales) || 1
-              ModSettingsMenu.set(:economymod_sales, (cur == 1 ? 0 : 1))
-            when 1
-              cur = ModSettingsMenu.get(:economymod_markups) || 1
-              ModSettingsMenu.set(:economymod_markups, (cur == 1 ? 0 : 1))
-            when 2
-              cur = ModSettingsMenu.get(:economymod_starting_money_enabled) || 1
-              ModSettingsMenu.set(:economymod_starting_money_enabled, (cur == 1 ? 0 : 1))
-            when 4
-              cur = ModSettingsMenu.get(:economymod_battle_money_enabled) || 1
-              ModSettingsMenu.set(:economymod_battle_money_enabled, (cur == 1 ? 0 : 1))
-            when 5
-              cur = ModSettingsMenu.get(:economymod_battle_money_multiplier)
-              cur = (EconomyMod::BattleMoney::DEFAULT_BATTLE_MONEY_MULTIPLIER.to_i rescue 1) if cur.nil?
-              cur = cur.to_i
-              if Input.trigger?(Input::LEFT)
-                cur -= 1
-                cur = 10 if cur < 1
-              elsif Input.trigger?(Input::RIGHT)
-                cur += 1
-                cur = 1 if cur > 10
-              end
-              ModSettingsMenu.set(:economymod_battle_money_multiplier, cur)
-            when 6
-              cur = ModSettingsMenu.get(:economymod_pokevial_cost_enabled) || 1
-              ModSettingsMenu.set(:economymod_pokevial_cost_enabled, (cur == 1 ? 0 : 1))
-            when 8
-              cur = ModSettingsMenu.get(:economymod_bonus_gifts_enabled)
-              cur = (EconomyMod::BonusGifts::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_bonus_gifts_enabled, (cur == 1 ? 0 : 1))
-            when 9
-              cur = ModSettingsMenu.get(:economymod_custom_prices_enabled)
-              cur = (EconomyMod::CustomPrices::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_custom_prices_enabled, (cur == 1 ? 0 : 1))
-            when 10
-              cur = ModSettingsMenu.get(:economymod_pc_selling_enabled)
-              cur = (EconomyMod::PCPokemonSelling::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_pc_selling_enabled, (cur == 1 ? 0 : 1))
-            end
-            cur_idx = cmdwindow.index
-            cmds = build_cmds.call
-            cmdwindow.commands = cmds
-            cmdwindow.resizeToFit(cmds) if cmdwindow.respond_to?(:resizeToFit)
-            cmdwindow.index = cur_idx
-            next
-          end
-
-          if Input.trigger?(Input::USE)
-            case idx
-            when 3
-              starting_money = ModSettingsMenu.get(:economymod_starting_money) || (EconomyMod::InitialMoney::DEFAULT_STARTING_MONEY rescue 3000)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(starting_money)
-              new_amount = pbMessageChooseNumber(_INTL("Set starting money amount."), params)
-              if new_amount && new_amount >= 0
-                ModSettingsMenu.set(:economymod_starting_money, new_amount)
-              end
-            when 5
-              cur = ModSettingsMenu.get(:economymod_battle_money_multiplier)
-              cur = (EconomyMod::BattleMoney::DEFAULT_BATTLE_MONEY_MULTIPLIER.to_i rescue 1) if cur.nil?
-              cur = cur.to_i + 1
-              cur = 1 if cur > 10
-              ModSettingsMenu.set(:economymod_battle_money_multiplier, cur)
-            when 6
-              cur = ModSettingsMenu.get(:economymod_pokevial_cost_enabled) || 1
-              ModSettingsMenu.set(:economymod_pokevial_cost_enabled, (cur == 1 ? 0 : 1))
-            when 7
-              pv_cost = ModSettingsMenu.get(:economymod_pokevial_cost) || (EconomyMod::PokeVialCost::DEFAULT_COST_PER_USE rescue 300)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(pv_cost)
-              new_cost = pbMessageChooseNumber(_INTL("Set cost per PokeVial use."), params)
-              if new_cost && new_cost >= 0
-                ModSettingsMenu.set(:economymod_pokevial_cost, new_cost)
-              end
-            when 8
-              cur = ModSettingsMenu.get(:economymod_bonus_gifts_enabled)
-              cur = (EconomyMod::BonusGifts::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_bonus_gifts_enabled, (cur == 1 ? 0 : 1))
-            when 9
-              cur = ModSettingsMenu.get(:economymod_custom_prices_enabled)
-              cur = (EconomyMod::CustomPrices::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_custom_prices_enabled, (cur == 1 ? 0 : 1))
-            when 10
-              cur = ModSettingsMenu.get(:economymod_pc_selling_enabled)
-              cur = (EconomyMod::PCPokemonSelling::ENABLED ? 1 : 0) if cur.nil?
-              ModSettingsMenu.set(:economymod_pc_selling_enabled, (cur == 1 ? 0 : 1))
-            when 11
-              nat_price = ModSettingsMenu.get(:economymod_nature_change_price) || (EconomyMod::NatureChange::DEFAULT_PRICE rescue 5000)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(nat_price)
-              new_cost = pbMessageChooseNumber(_INTL("Set price for Change Nature."), params)
-              if new_cost && new_cost >= 0
-                ModSettingsMenu.set(:economymod_nature_change_price, new_cost)
-              end
-            when 12
-              reset_price = ModSettingsMenu.get(:economymod_reset_evs_price) || (EconomyMod::ResetEVs::DEFAULT_PRICE rescue 1000)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(reset_price)
-              new_cost = pbMessageChooseNumber(_INTL("Set price for Reset EVs."), params)
-              if new_cost && new_cost >= 0
-                ModSettingsMenu.set(:economymod_reset_evs_price, new_cost)
-              end
-            when 13
-              insta_price = ModSettingsMenu.get(:economymod_insta_hatch_price) || (EconomyMod::InstaHatch::DEFAULT_PRICE rescue 1000)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(insta_price)
-              new_cost = pbMessageChooseNumber(_INTL("Set price for Insta-Hatch."), params)
-              if new_cost && new_cost >= 0
-                ModSettingsMenu.set(:economymod_insta_hatch_price, new_cost)
-              end
-            when 14
-              friendship_price = ModSettingsMenu.get(:economymod_friendship_boost_price) || (EconomyMod::FriendshipBoost::DEFAULT_PRICE rescue 500)
-              params = ChooseNumberParams.new
-              params.setRange(0, 999_999)
-              params.setDefaultValue(friendship_price)
-              new_cost = pbMessageChooseNumber(_INTL("Set price for Friendship Boost."), params)
-              if new_cost && new_cost >= 0
-                ModSettingsMenu.set(:economymod_friendship_boost_price, new_cost)
-              end
-            when 15
-              pbPlayCancelSE if defined?(pbPlayCancelSE)
-              break
-            else
-              if idx == 0
-                cur = ModSettingsMenu.get(:economymod_sales) || 1
-                ModSettingsMenu.set(:economymod_sales, (cur == 1 ? 0 : 1))
-              elsif idx == 2
-                cur = ModSettingsMenu.get(:economymod_starting_money_enabled) || 1
-                ModSettingsMenu.set(:economymod_starting_money_enabled, (cur == 1 ? 0 : 1))
-              elsif idx == 4
-                cur = ModSettingsMenu.get(:economymod_battle_money_enabled) || 1
-                ModSettingsMenu.set(:economymod_battle_money_enabled, (cur == 1 ? 0 : 1))
-              elsif idx == 1
-                cur = ModSettingsMenu.get(:economymod_markups) || 1
-                ModSettingsMenu.set(:economymod_markups, (cur == 1 ? 0 : 1))
-              end
-            end
-            cur_idx = cmdwindow.index
-            cmds = build_cmds.call
-            cmdwindow.commands = cmds
-            cmdwindow.resizeToFit(cmds) if cmdwindow.respond_to?(:resizeToFit)
-            cmdwindow.index = cur_idx
-          elsif Input.trigger?(Input::BACK)
-            pbPlayCancelSE if defined?(pbPlayCancelSE)
-            break
-          end
-        end
-
-        begin
-          ModSettingsMenu.set(:economymod_menu_last_index, cmdwindow.index)
-        rescue
-        end
-        cmdwindow.dispose
-
-        loop do
-          Graphics.update
-          Input.update
-          break unless Input.press?(Input::BACK)
-        end
-      end,
-      _INTL("Configure Economy Mod settings")
-    )
-
-    begin
-      ModSettingsMenu.register_option(btn, :economy_mod, "Economy")
-    rescue
-    end
+    
+    # Initialize default values
+    ModSettingsMenu.set(:economymod_sales, 1) if ModSettingsMenu.get(:economymod_sales).nil?
+    ModSettingsMenu.set(:economymod_markups, 1) if ModSettingsMenu.get(:economymod_markups).nil?
+    ModSettingsMenu.set(:economymod_starting_money_enabled, 1) if ModSettingsMenu.get(:economymod_starting_money_enabled).nil?
+    ModSettingsMenu.set(:economymod_starting_money, 3000) if ModSettingsMenu.get(:economymod_starting_money).nil?
+    ModSettingsMenu.set(:economymod_battle_money_enabled, 1) if ModSettingsMenu.get(:economymod_battle_money_enabled).nil?
+    ModSettingsMenu.set(:economymod_battle_money_multiplier, 1) if ModSettingsMenu.get(:economymod_battle_money_multiplier).nil?
+    ModSettingsMenu.set(:economymod_pokevial_cost_enabled, 1) if ModSettingsMenu.get(:economymod_pokevial_cost_enabled).nil?
+    ModSettingsMenu.set(:economymod_pokevial_cost, 300) if ModSettingsMenu.get(:economymod_pokevial_cost).nil?
+    ModSettingsMenu.set(:economymod_bonus_gifts_enabled, 0) if ModSettingsMenu.get(:economymod_bonus_gifts_enabled).nil?
+    ModSettingsMenu.set(:economymod_custom_prices_enabled, 0) if ModSettingsMenu.get(:economymod_custom_prices_enabled).nil?
+    ModSettingsMenu.set(:economymod_pc_selling_enabled, 0) if ModSettingsMenu.get(:economymod_pc_selling_enabled).nil?
+    ModSettingsMenu.set(:economymod_nature_change_price, 5000) if ModSettingsMenu.get(:economymod_nature_change_price).nil?
+    ModSettingsMenu.set(:economymod_reset_evs_price, 1000) if ModSettingsMenu.get(:economymod_reset_evs_price).nil?
+    ModSettingsMenu.set(:economymod_insta_hatch_price, 1000) if ModSettingsMenu.get(:economymod_insta_hatch_price).nil?
+    ModSettingsMenu.set(:economymod_friendship_boost_price, 500) if ModSettingsMenu.get(:economymod_friendship_boost_price).nil?
+    
+    # Register Economy Mod button that opens the submenu scene
+    ModSettingsMenu.register(:economy_mod, {
+      name: "Economy Mod",
+      type: :button,
+      description: "Configure sales, markups, battle money, and PC mod prices",
+      on_press: proc {
+        pbFadeOutIn {
+          scene = EconomyModScene.new
+          screen = PokemonOptionScreen.new(scene)
+          screen.pbStartScreen
+        }
+      },
+      category: "Economy",
+      searchable: [
+        "sales", "markups", "pokemart", "money", "battle money", "starting money",
+        "pokevial", "cost", "price", "nature change", "reset evs", "insta-hatch",
+        "friendship boost", "bonus gifts", "custom prices", "pc selling", "sell pokemon"
+      ]
+    })
   end
 
   if defined?(ModSettingsMenu)
@@ -2889,7 +2847,3 @@ begin
   end
 rescue
 end
-
-# ============================================================================
-# END OF SETTINGS REGISTRATION
-# ============================================================================
