@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.1.0  
+**Script Version:** 3.1.1  
 **Author:** Stonewall
 ---
 
