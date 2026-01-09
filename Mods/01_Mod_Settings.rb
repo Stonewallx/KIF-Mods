@@ -2,76 +2,51 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.0.0
+# Script Version: 3.1.0
 # Author: Stonewall
 #========================================
 #
-# NEW IN V3.0: PREDEFINED CATEGORIES AND SEARCH
-# ==============================================
-# Use these predefined categories when registering settings:
-#
-# AVAILABLE CATEGORIES:
-#   "Interface"     - UI, menus, text speed, visual interface
-#   "Features & Systems"    - Major features like seasons, weather, followers
-#   "Quality of Life"       - Convenience features, item management, shortcuts
-#   "Battle & Combat"       - Battle mechanics, move changes, ability tweaks
-#   "Economy & Rewards"     - Money, shops, pickup, loot, prizes
-#   "Difficulty & Challenge" - Nuzlocke, boss system, trainer control, challenge modes
-#   "Encounters & Spawns"   - Wild encounters, hordes, randomizers, spawn rates
-#   "Training & Stats"      - EVs, IVs, experience, stat modifications
-#   "Uncategorized"         - Settings without assigned categories
-#   "Debug & Developer"     - Testing tools, debug options
-#
-# USAGE:
-#   ModSettingsMenu.register_toggle(
-#     :my_setting,
-#     "My Setting",
-#     "Description",
-#     0,  # default
-#     "Quality of Life"  # <-- Use one of the categories above
-#   )
-#
-# SEARCH:
-#   Press Left Control to search settings by name or description
-#   Press Left Control again to clear search
-#
-# NOTE: Category order is managed right below.
-# Use the predefined ones. If you feel like I missed a category that should be added, then please contact me.
+# DOCUMENTATION: See "Mod_Settings_Documentation.md" for full guide
 
-
-### 2. Mod Dependency Support
-# **Manifest Format:**
-# ```json
-# {
-#  "ModName": {
-#     "version": "1.0.0",
-#     "download_url": "...",
-#     "dependencies": [
-#       "RequiredModName",
-#       {"name": "AnotherMod", "version": "2.0.0"}
-#     ]
-#   }
-# }
+# Log mod initialization
+begin
+  mod_debug_path = "ModsDebug.txt"
+  File.open(mod_debug_path, "a") do |f|
+    f.puts("[#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}] Mod Settings Menu v3.1.0 loaded successfully")
+  end
+rescue
+  # Silently fail if we can't write to debug file during early initialization
+end
 #
-#========================================
-
-# ============================================================================
-# PREDEFINED CATEGORIES CONFIGURATION
-# ============================================================================
-# Edit the priority values here to change the order categories appear in.
-# Lower priority = appears first. Do not change the category names.
+# QUICK START:
+#   ModSettingsMenu.register(:my_setting, {
+#     name: "My Setting",
+#     type: :toggle,
+#     description: "What it does",
+#     default: 0,
+#     category: "Quality of Life"
+#   })
+#
+# TYPES: :toggle, :enum, :number, :slider, :button
+#
+# CATEGORIES:
+#   Interface | Major Systems | Quality of Life | Battle Mechanics
+#   Economy | Difficulty | Encounters | Training & Stats
+#   Multiplayer Addons | Uncategorized (default) | Debug & Developer
+#
 # ============================================================================
 MOD_CATEGORIES = [
-  {name: "Interface",     priority: 10, description: "UI, menus, and visual interface options"},
-  {name: "Features & Systems",    priority: 20, description: "Major gameplay systems and features"},
-  {name: "Quality of Life",       priority: 30, description: "Convenience features and shortcuts"},
-  {name: "Battle & Combat",       priority: 40, description: "Battle mechanics and move changes"},
-  {name: "Economy & Rewards",     priority: 50, description: "Money, shops, and item rewards"},
-  {name: "Difficulty & Challenge", priority: 60, description: "Challenge modes and difficulty options"},
-  {name: "Encounters & Spawns",   priority: 70, description: "Wild encounters and spawn settings"},
-  {name: "Training & Stats",      priority: 80, description: "EV/IV training and stat modifications"},
+  {name: "Interface",     priority: 10, description: "UI, menus, text speed, visual interface"},
+  {name: "Major Systems",    priority: 20, description: "Major features like seasons, weather, followers"},
+  {name: "Quality of Life",       priority: 30, description: "Convenience features, item management, shortcuts"},
+  {name: "Battle Mechanics",       priority: 40, description: "Battle mechanics, move changes, ability tweaks"},
+  {name: "Economy",     priority: 50, description: "Money, shops, pickup, loot, prizes"},
+  {name: "Difficulty", priority: 60, description: "Nuzlocke, boss system, trainer control, challenge modes"},
+  {name: "Encounters",   priority: 70, description: "Wild encounters, hordes, randomizers, spawn rates"},
+  {name: "Training & Stats",      priority: 80, description: "EVs, IVs, experience, stat modifications"},
+  {name: "Multiplayer Addons",    priority: 85, description: "Multiplayer features, co-op, online functionality"},
   {name: "Uncategorized",         priority: 900, description: "Settings without assigned categories"},
-  {name: "Debug & Developer",     priority: 999, description: "Testing and debug tools"},
+  {name: "Debug & Developer",     priority: 999, description: "Testing tools, debug options"},
   {name: "-----------------",     priority: 1000, description: "Separator" },
 ]
 
@@ -179,6 +154,67 @@ module ModSettingsMenu
       return fallback_storage
     end
 
+    # ========================================================================
+    # SIMPLIFIED REGISTRATION API
+    # ========================================================================
+    # Single method to register any type of setting with a simple hash
+    # See Mod_Settings_Documentation.md for full examples and guide
+    # 
+    # @param key [Symbol] Unique identifier for this setting
+    # @param options [Hash] Configuration with :name, :type, :description, :default, :category
+    # @return [Option] The created option object
+    def register(key, options = {})
+      # Extract common parameters with defaults
+      name = options[:name] || "Unnamed Setting"
+      type = options[:type] || :toggle
+      description = options[:description] || ""
+      category = options[:category]
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
+      default = options[:default]
+      
+      # Handle each type
+      case type
+      when :toggle
+        # Toggle: On/Off (default: 0 = Off)
+        default = 0 if default.nil?
+        return register_toggle(key, name, description, default, category)
+        
+      when :enum
+        # Enum: dropdown list
+        values = options[:values] || ["Option 1", "Option 2"]
+        default = 0 if default.nil?
+        return register_enum(key, name, values, default, description, category)
+        
+      when :number
+        # Number: numeric input with min/max
+        min = options[:min] || 0
+        max = options[:max] || 100
+        default = min if default.nil?
+        return register_number(key, name, min, max, default, description, category)
+        
+      when :slider
+        # Slider: numeric slider with interval
+        min = options[:min] || 0
+        max = options[:max] || 100
+        interval = options[:interval] || 1
+        default = min if default.nil?
+        return register_slider(key, name, min, max, interval, default, description, category)
+        
+      when :button
+        # Button: clickable option that runs code
+        on_press = options[:on_press] || proc { pbMessage("Button pressed!") if defined?(pbMessage) }
+        searchable = options[:searchable]
+        
+        opt = ButtonOption.new(name, on_press, description)
+        registry << {:key => key, :option => opt, :category => category, :searchable_items => searchable}
+        return opt
+        
+      else
+        # Unknown type - default to toggle
+        return register_toggle(key, name, description, 0, category)
+      end
+    end
+
     # Registers a simple On/Off toggle setting
     # @param key [Symbol] Unique identifier for this setting
     # @param name [String] Display name shown in the menu
@@ -187,6 +223,7 @@ module ModSettingsMenu
     # @param category [String, nil] Optional category name for organization
     # @return [EnumOption] The created option object
     def register_toggle(key, name, description = "", default = 0, category = nil)
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
       return if registry.any? { |r| r[:key] == key }  # Prevent duplicate registrations
       opt = EnumOption.new(name, [_INTL("Off"), _INTL("On")],
                            proc { ModSettingsMenu.get(key) },
@@ -207,9 +244,10 @@ module ModSettingsMenu
     # @return [Option] The registered option object
     #
     # For ButtonOption submenus, provide searchable_items to make submenu contents discoverable:
-    #   ModSettingsMenu.register_option(btn, :economy_mod, "Economy & Rewards",
+    #   ModSettingsMenu.register_option(btn, :economy_mod, "Economy",
     #     ["sales", "markups", "initial money", "battle money", "multiplier", "pokevial cost"])
     def register_option(option, key = nil, category = nil, searchable_items = nil)
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
       registry << {:key => key, :option => option, :category => category, :searchable_items => searchable_items}
       return option
     end
@@ -223,6 +261,7 @@ module ModSettingsMenu
     # @param category [String, nil] Optional category name for organization
     # @return [EnumOption] The created option object
     def register_enum(key, name, values, default_index = 0, description = "", category = nil)
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
       opt = EnumOption.new(name, values, proc { ModSettingsMenu.get(key) }, proc { |v| ModSettingsMenu.set(key, v) }, description)
       registry << {:key => key, :option => opt, :category => category}
       ensure_storage
@@ -241,6 +280,7 @@ module ModSettingsMenu
     # @param category [String, nil] Optional category name for organization
     # @return [NumberOption] The created option object
     def register_number(key, name, startv, endv, default, description = "", category = nil)
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
       opt = NumberOption.new(name, startv, endv, proc { ModSettingsMenu.get(key) || 0 }, proc { |v| ModSettingsMenu.set(key, v) })
       registry << {:key => key, :option => opt, :category => category}
       ensure_storage
@@ -260,6 +300,7 @@ module ModSettingsMenu
     # @param category [String, nil] Optional category name for organization
     # @return [SliderOption] The created option object
     def register_slider(key, name, startv, endv, interval, default, description = "", category = nil)
+      category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
       opt = SliderOption.new(name, startv, endv, interval, proc { ModSettingsMenu.get(key) || 0 }, proc { |v| ModSettingsMenu.set(key, v) }, description)
       registry << {:key => key, :option => opt, :category => category}
       ensure_storage
@@ -699,6 +740,29 @@ module ModSettingsMenu
         return []
       end
     end
+    
+    # ========================================================================
+    # PENDING REGISTRATIONS
+    # ========================================================================
+    # For mods that load before ModSettingsMenu, they can queue registrations
+    # ========================================================================
+    
+    # Add a registration to the pending queue (for early-loading mods)
+    # @param key [Symbol] Setting key
+    # @param options [Hash] Registration options (same as register method)
+    # Usage:
+    #   ModSettingsMenu.register_pending(:my_setting, {
+    #     name: "My Setting",
+    #     type: :toggle,
+    #     default: 0,
+    #     category: "Quality of Life"
+    #   })
+    def register_pending(key, options = {})
+      $MOD_SETTINGS_PENDING_REGISTRATIONS ||= []
+      $MOD_SETTINGS_PENDING_REGISTRATIONS << proc {
+        register(key, options)
+      }
+    end
   end  # End of class << self
 end  # End of ModSettingsMenu module
 
@@ -760,6 +824,65 @@ begin
   rescue
   end
 rescue
+end
+
+
+# ============================================================================
+# MOD SETTINGS SPACING MODULE
+# ============================================================================
+# Module that provides automatic spacing for multi-row dropdowns
+# Only include this in Mod Settings related scenes to avoid compatibility issues
+
+# Spacer option to prevent overlap with multi-row dropdowns
+class SpacerOption < Option
+  attr_reader :name
+  attr_reader :values
+  
+  def initialize
+    super(" ")
+    @name = ""  # Empty name
+    @values = []
+  end
+  
+  def get
+    return 0
+  end
+  
+  def set(value)
+  end
+  
+  # Override format to return an empty string
+  def format(value)
+    return ""
+  end
+end
+
+module ModSettingsSpacing
+  # Automatically inserts SpacerOptions after multi-row dropdowns
+  def auto_insert_spacers(options)
+    return options unless options.is_a?(Array)
+    
+    result = []
+    items_per_row = 3
+    
+    options.each do |option|
+      result << option
+      
+      # Check if this is an EnumOption with 4 or more values (multi-row)
+      if option.is_a?(EnumOption) && option.values && option.values.length >= 4
+        num_values = option.values.length
+        num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
+        spacers_needed = num_rows - 1
+        
+        # Add the required spacers
+        spacers_needed.times do
+          result << SpacerOption.new
+        end
+      end
+    end
+    
+    return result
+  end
 end
 
 # ============================================================================
@@ -1180,6 +1303,7 @@ end
 # Scene for displaying mod update options
 # ============================================================================
 class ModUpdatesScene < PokemonOption_Scene
+  include ModSettingsSpacing
   def pbGetOptions(inloadscreen = false)
     options = []
     options << CheckUpdatesOption.new
@@ -1198,9 +1322,10 @@ class ModUpdatesScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Mod Updates"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Enable purple colors
-    if @sprites["option"] && @sprites["option"].respond_to?(:use_blue_colors=)
-      @sprites["option"].use_blue_colors = true
+    # Enable purple colors and custom spacing
+    if @sprites["option"]
+      @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
     end
     
     # Initialize values
@@ -1219,6 +1344,7 @@ end
 # Scene for displaying preset management options
 # ============================================================================
 class PresetSettingsScene < PokemonOption_Scene
+  include ModSettingsSpacing
   def pbGetOptions(inloadscreen = false)
     options = []
     options << SavePresetOption.new
@@ -1237,9 +1363,10 @@ class PresetSettingsScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Save & Load Presets"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Enable purple colors
-    if @sprites["option"] && @sprites["option"].respond_to?(:use_blue_colors=)
-      @sprites["option"].use_blue_colors = true
+    # Enable purple colors and custom spacing
+    if @sprites["option"]
+      @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
     end
     
     # Initialize values
@@ -1384,9 +1511,51 @@ class ColoredCategoryHeaderOption < CategoryHeaderOption
   end
 end
 
+# Column header for version displays
+class ColumnHeaderOption < CategoryHeaderOption
+  def initialize
+    super("Mod Name                                                     Local              Online", " ")
+  end
+  
+  # Override format to return the header as-is
+  def format(value)
+    return @name
+  end
+end
+
+
 # Custom window for update results with specific category colors
 class Window_UpdateResults < Window_PokemonOption
   def drawItem(index, _count, rect)
+    # Special handling for column header
+    if index < @options.length && @options[index].is_a?(ColumnHeaderOption)
+      rect = drawCursor(index, rect)
+      pbSetSystemFont(self.contents)
+      
+      # Use the same column layout as the data rows
+      optionwidth = rect.width * 12 / 20  # 60% for name column
+      colwidth = (rect.width - optionwidth) / 2  # Split remaining 40% into two columns
+      
+      # Use red color combo for headers (same as Developer Version)
+      baseColor = Color.new(240, 120, 120)
+      shadowColor = Color.new(92, 44, 44)
+      
+      # Draw "Mod Name" at the same position as mod names
+      pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, "Mod Name",
+                       baseColor, shadowColor)
+      
+      # Draw "Local" at the same position as local versions
+      xpos = optionwidth + rect.x
+      pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, "Local",
+                       baseColor, shadowColor)
+      
+      # Draw "Online" at the same position as online versions
+      xpos += colwidth
+      pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, "Online",
+                       baseColor, shadowColor)
+      return
+    end
+    
     # Check if this is a colored category header
     if index < @options.length && @options[index].is_a?(ColoredCategoryHeaderOption)
       # Get the specific color for this category
@@ -1443,6 +1612,132 @@ class Window_UpdateResults < Window_PokemonOption
       else
         super(index, _count, rect)
       end
+    elsif index < @options.length && @options[index].is_a?(ButtonOption)
+      # Custom drawing for mod version entries to align version numbers
+      return if dont_draw_item(index) if respond_to?(:dont_draw_item)
+      rect = drawCursor(index, rect)
+      
+      optionname = @options[index].name
+      
+      # Handle pipe-delimited format for mod entries
+      if optionname =~ /^(.+?)\|(.+?)\|(.+)$/
+        # Format: "Mod Name|1.0.0|2.0.0" - Updates available (all 3 columns)
+        mod_name = $1
+        local_version = $2
+        online_version = $3
+        
+        # Draw mod name on left (60%)
+        optionwidth = rect.width * 12 / 20
+        pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, mod_name,
+                         @nameBaseColor, @nameShadowColor)
+        
+        # Draw versions in columns (split remaining 40%)
+        colwidth = (rect.width - optionwidth) / 2
+        xpos = optionwidth + rect.x
+        
+        # Only show arrow if this is an actual update (not a developer version)
+        # Developer versions have local > online, so we check if online would be an "upgrade"
+        show_arrow = false
+        begin
+          local_parts = local_version.split('.').map(&:to_i)
+          online_parts = online_version.split('.').map(&:to_i)
+          # Pad arrays to same length
+          max_len = [local_parts.length, online_parts.length].max
+          local_parts += [0] * (max_len - local_parts.length)
+          online_parts += [0] * (max_len - online_parts.length)
+          # Compare versions
+          comparison = 0
+          local_parts.each_with_index do |local_num, i|
+            if local_num < online_parts[i]
+              comparison = -1
+              break
+            elsif local_num > online_parts[i]
+              comparison = 1
+              break
+            end
+          end
+          show_arrow = (comparison == -1)  # Only show arrow if local < online
+        rescue
+          show_arrow = true  # If version parsing fails, show arrow by default
+        end
+        
+        # Local version with arrow (only if it's an update)
+        version_text = show_arrow ? "#{local_version} =>" : local_version
+        pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, version_text,
+                         @selBaseColor, @selShadowColor)
+        
+        # Online version
+        xpos += colwidth
+        pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, online_version,
+                         @selBaseColor, @selShadowColor)
+      elsif optionname =~ /^(.+?)\|(.+?)\|$/
+        # Format: "Mod Name|1.0.0|" - Up to date or not tracked (only 2 columns)
+        mod_name = $1
+        version = $2
+        
+        # Draw mod name on left (60%)
+        optionwidth = rect.width * 12 / 20
+        pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, mod_name,
+                         @nameBaseColor, @nameShadowColor)
+        
+        # Draw version in Local column only
+        colwidth = (rect.width - optionwidth) / 2
+        xpos = optionwidth + rect.x
+        pbDrawShadowText(self.contents, xpos, rect.y, colwidth, rect.height, version,
+                         @selBaseColor, @selShadowColor)
+      else
+        # Fallback to original patterns for backward compatibility
+        if optionname =~ /^(.+?):\s*(.+)\s*=>\s*(.+)$/
+          # Format: "Mod Name: 1.0.0 => 2.0.0" - Updates available
+          mod_name = $1
+          old_version = $2
+          new_version = $3
+          
+          # Draw mod name on left
+          optionwidth = rect.width * 12 / 20  # 60% for name
+          pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, mod_name,
+                           @nameBaseColor, @nameShadowColor)
+          
+          # Draw versions on right, aligned
+          version_text = "#{old_version} => #{new_version}"
+          xpos = optionwidth + rect.x
+          pbDrawShadowText(self.contents, xpos, rect.y, rect.width - optionwidth, rect.height, version_text,
+                           @selBaseColor, @selShadowColor)
+        elsif optionname =~ /^(.+?):\s*(.+?)\s*\((.+?)\)$/
+          # Format: "Mod Name: 1.0.0 (0.0.0)" - Developer version (local newer than manifest)
+          mod_name = $1
+          local_version = $2
+          manifest_version = $3
+          
+          # Draw mod name on left
+          optionwidth = rect.width * 12 / 20  # 60% for name
+          pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, mod_name,
+                           @nameBaseColor, @nameShadowColor)
+          
+          # Draw versions on right, aligned
+          version_text = "#{local_version} (#{manifest_version})"
+          xpos = optionwidth + rect.x
+          pbDrawShadowText(self.contents, xpos, rect.y, rect.width - optionwidth, rect.height, version_text,
+                           @selBaseColor, @selShadowColor)
+        elsif optionname =~ /^(.+?)\s+\((.+?)\)$/
+          # Format: "Mod Name (1.0.0)" - up to date or not tracked
+          mod_name = $1
+          version = $2
+          
+          # Draw mod name on left
+          optionwidth = rect.width * 12 / 20  # 60% for name
+          pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, mod_name,
+                           @nameBaseColor, @nameShadowColor)
+          
+          # Draw version on right, aligned
+          xpos = optionwidth + rect.x
+          pbDrawShadowText(self.contents, xpos, rect.y, rect.width - optionwidth, rect.height, version,
+                           @selBaseColor, @selShadowColor)
+        else
+          # Fallback to normal drawing
+          super(index, _count, rect)
+        end
+      end
     else
       super(index, _count, rect)
     end
@@ -1468,12 +1763,15 @@ class UpdateResultsScene < PokemonOption_Scene
   def pbGetOptions(inloadscreen = false)
     options = []
     
+    # Add column header at the very top
+    options << ColumnHeaderOption.new
+    
     # Major Updates Needed section (RED)
     if @results[:major_updates].any?
       header = ColoredCategoryHeaderOption.new("Major Updates Available", "Major version (X) behind latest", :red)
       options << header
       @results[:major_updates].each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         callback = proc { pbModUpdateActions(mod) }
         opt = ButtonOption.new(text, callback, " ")
         options << opt
@@ -1485,7 +1783,7 @@ class UpdateResultsScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Minor Updates Available", "Minor version (Y) behind latest", :orange)
       options << header
       @results[:minor_updates].each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         callback = proc { pbModUpdateActions(mod) }
         opt = ButtonOption.new(text, callback, " ")
         options << opt
@@ -1497,7 +1795,7 @@ class UpdateResultsScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Hotfixes Available", "Hotfix version (Z) behind latest", :yellow)
       options << header
       @results[:hotfixes].each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         callback = proc { pbModUpdateActions(mod) }
         opt = ButtonOption.new(text, callback, " ")
         options << opt
@@ -1509,7 +1807,7 @@ class UpdateResultsScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Up to Date", "Mods matching latest version", :green)
       options << header
       @results[:up_to_date].each do |mod|
-        text = sprintf("%s (%s)", mod[:name], mod[:local])
+        text = sprintf("%s|%s|", mod[:name], mod[:local])
         callback = proc { pbModUpdateActions(mod) }
         opt = ButtonOption.new(text, callback, " ")
         options << opt
@@ -1521,7 +1819,7 @@ class UpdateResultsScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Developer Version", "Mods newer than manifest", :red)
       options << header
       @results[:developer_version].each do |mod|
-        text = sprintf("%s: %s (%s)", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         callback = proc { pbModUpdateActions(mod) }
         opt = ButtonOption.new(text, callback, " ")
         options << opt
@@ -1533,7 +1831,7 @@ class UpdateResultsScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Not Tracked", "Mods not in manifest", :blue)
       options << header
       @results[:not_tracked].each do |mod|
-        text = sprintf("%s (%s)", mod[:name], mod[:version])
+        text = sprintf("%s|%s|", mod[:name], mod[:version])
         opt = ButtonOption.new(text, proc {}, " ")
         options << opt
       end
@@ -2114,6 +2412,33 @@ class PokemonOption_Scene
     }
     @mod_menu = false
   end
+  
+  # Automatically inserts SpacerOptions after multi-row dropdowns
+  # Available to all scenes that inherit from PokemonOption_Scene
+  def auto_insert_spacers(options)
+    return options unless options.is_a?(Array)
+    
+    result = []
+    items_per_row = 3
+    
+    options.each do |option|
+      result << option
+      
+      # Check if this is an EnumOption with 4 or more values (multi-row)
+      if option.is_a?(EnumOption) && option.values && option.values.length >= 4
+        num_values = option.values.length
+        num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
+        spacers_needed = num_rows - 1
+        
+        # Add the required spacers
+        spacers_needed.times do
+          result << SpacerOption.new
+        end
+      end
+    end
+    
+    return result
+  end
 end
 
 # ============================================================================
@@ -2125,6 +2450,7 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
   
   class Window_PokemonOption
     attr_accessor :use_blue_colors
+    attr_accessor :modsettings_menu
     attr_accessor :nameBaseColor
     attr_accessor :nameShadowColor
     attr_accessor :selBaseColor
@@ -2163,7 +2489,13 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
       refresh if respond_to?(:refresh)
     end
     
+    # Allow setting the modsettings_menu flag after initialization  
+    def modsettings_menu=(value)
+      @modsettings_menu = value
+    end
+    
     # Override drawItem to use selected theme colors for CategoryHeaderOption and SearchResultOption
+    # Also uses better spacing (7/20 instead of 9/20) for all options
     unless method_defined?(:modsettings_original_drawItem)
       alias modsettings_original_drawItem drawItem
       def drawItem(index, _count, rect)
@@ -2221,7 +2553,8 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
             pbDrawShadowText(self.contents, x_pos, rect.y, text_width, rect.height, text,
                            @nameBaseColor, @nameShadowColor)
           else
-            modsettings_original_drawItem(index, _count, rect)
+            # For search results, use custom spacing
+            modsettings_drawitem_with_custom_spacing(index, _count, rect)
           end
           
           # Restore original colors
@@ -2230,8 +2563,147 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
           @selBaseColor = old_sel_base
           @selShadowColor = old_sel_shadow
         else
-          # Normal drawing for non-category items
-          modsettings_original_drawItem(index, _count, rect)
+          # Normal drawing for non-category items with custom spacing
+          modsettings_drawitem_with_custom_spacing(index, _count, rect)
+        end
+      end
+      
+      # Helper method that draws items with custom spacing for Mod Settings only
+      def modsettings_drawitem_with_custom_spacing(index, _count, rect)
+        # Only apply custom spacing if this is a Mod Settings menu
+        unless @modsettings_menu
+          # Use original drawItem for non-mod-settings menus
+          return modsettings_original_drawItem(index, _count, rect)
+        end
+        
+        return if dont_draw_item(index) if respond_to?(:dont_draw_item)
+        rect = drawCursor(index, rect)
+        optionname = (index == @options.length) ? _INTL("Confirm") : @options[index].name
+        optionwidth = rect.width * 12 / 20  # Changed to 12/20 (60% label, 40% value) to push sliders right
+        if @options[index] && @options[index].is_a?(ButtonOption)
+          optionwidth = rect.width
+        end
+        pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, optionname,
+                         @nameBaseColor, @nameShadowColor)
+        return if index == @options.length
+        if @options[index].is_a?(EnumOption) || @options[index].is_a?(ButtonsOption)
+          if @options[index].values.length > 1
+            num_values = @options[index].values.length
+            
+            # Check if we need multi-row layout (more than 3 options)
+            if num_values > 3
+              # Multi-row layout: 3 options per row
+              items_per_row = 3
+              num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
+              
+              # Starting position - moved 5px right from original
+              base_xpos = optionwidth + rect.x - 95
+              
+              ivalue = 0
+              current_row = 0
+              
+              # Process each row
+              for row in 0...num_rows
+                # Calculate how many items in this row
+                items_in_row = [items_per_row, num_values - (row * items_per_row)].min
+                
+                # Calculate total width for this row's items
+                row_total_width = 0
+                for i in 0...items_in_row
+                  idx = row * items_per_row + i
+                  if idx < @options[index].values.length
+                    row_total_width += self.contents.text_size(@options[index].values[idx]).width
+                  end
+                end
+                
+                # Calculate spacing for this row
+                if items_in_row > 1
+                  row_spacing = (optionwidth * 0.5 - row_total_width) / (items_in_row - 1)
+                  row_spacing = row_spacing * 3 / 4  # Reduce by 25%
+                  row_spacing = [row_spacing, 10].max  # Minimum 10px spacing
+                else
+                  row_spacing = 0
+                end
+                
+                # Draw items in this row
+                xpos = base_xpos
+                ypos = rect.y + (row * rect.height)
+                
+                for i in 0...items_in_row
+                  idx = row * items_per_row + i
+                  if idx < @options[index].values.length
+                    value = @options[index].values[idx]
+                    
+                    # Draw the value
+                    pbDrawShadowText(self.contents, xpos, ypos, optionwidth, rect.height, value,
+                                     (idx == self[index]) ? @selBaseColor : self.baseColor,
+                                     (idx == self[index]) ? @selShadowColor : self.shadowColor
+                    )
+                    
+                    # Move x position for next item
+                    xpos += self.contents.text_size(value).width + row_spacing
+                  end
+                end
+              end
+            else
+              # Original single-row layout for 2-3 options
+              totalwidth = 0
+              for value in @options[index].values
+                totalwidth += self.contents.text_size(value).width
+              end
+              spacing = (optionwidth - totalwidth) / (@options[index].values.length - 1)
+              
+              # For toggles (2 values), reduce spacing to 1/4 to bring Off/On much closer together
+              if @options[index].values.length == 2
+                spacing = spacing / 4
+                # Toggles start at normal position (optionwidth)
+                xpos = optionwidth + rect.x
+              else
+                # For dropdowns (3 values), reduce spacing by 25%
+                spacing = spacing * 3 / 4
+                # Dropdowns start 95px left of normal position - moved 5px right
+                xpos = optionwidth + rect.x - 95
+              end
+              
+              spacing = 0 if spacing < 0
+              ivalue = 0
+              for value in @options[index].values
+                pbDrawShadowText(self.contents, xpos, rect.y, optionwidth, rect.height, value,
+                                 (ivalue == self[index]) ? @selBaseColor : self.baseColor,
+                                 (ivalue == self[index]) ? @selShadowColor : self.shadowColor
+                )
+                xpos += self.contents.text_size(value).width
+                xpos += spacing
+                ivalue += 1
+              end
+            end
+          else
+            pbDrawShadowText(self.contents, rect.x + optionwidth, rect.y, optionwidth, rect.height,
+                             @options[index].values[self[index]],
+                             @selBaseColor, @selShadowColor)
+          end
+        elsif @options[index].is_a?(NumberOption)
+          value = _INTL("Type {1}/{2}", @options[index].optstart + self[index],
+                        @options[index].optend - @options[index].optstart + 1)
+          xpos = optionwidth + rect.x
+          pbDrawShadowText(self.contents, xpos, rect.y, optionwidth, rect.height, value,
+                           @selBaseColor, @selShadowColor)
+        elsif @options[index].is_a?(SliderOption)
+          # Custom slider sizing for Mod Settings: 65% of available width
+          sliderwidth = optionwidth * 13 / 20
+          value = sprintf(" %d", @options[index].optend)
+          sliderlength = sliderwidth - self.contents.text_size(value).width
+          xpos = optionwidth + rect.x - 20  # Move slider left by 20 pixels
+          self.contents.fill_rect(xpos, rect.y - 2 + rect.height / 2,
+                                  sliderwidth - self.contents.text_size(value).width, 4, self.baseColor)
+          self.contents.fill_rect(
+            xpos + (sliderlength - 8) * (@options[index].optstart + self[index]) / @options[index].optend,
+            rect.y - 8 + rect.height / 2,
+            8, 16, @selBaseColor)
+          value = sprintf("%d", @options[index].optstart + self[index])
+          xpos += sliderwidth - self.contents.text_size(value).width
+          pbDrawShadowText(self.contents, xpos, rect.y, sliderwidth, rect.height, value,
+                           @selBaseColor, @selShadowColor)
         end
       end
     end
@@ -2268,7 +2740,13 @@ end
 # Handles deduplication of options and dynamic option generation.
 # ============================================================================
 class ModSettingsScene < PokemonOption_Scene
+  include ModSettingsSpacing
   attr_accessor :search_term
+  
+  # Override to show nothing when no description instead of "Speech Frame 12"
+  def getDefaultDescription
+    return " "  # Return space instead of empty string to avoid base game replacement
+  end
   
   def initialize
     super
@@ -2458,8 +2936,8 @@ class ModSettingsScene < PokemonOption_Scene
           has_items = categorized[cat[:name]] && categorized[cat[:name]].any?
         end
         
-        # Only show header if category has items
-        next unless has_items
+        # Always show separator category, skip others if empty
+        next unless has_items || cat[:name] == "-----------------"
         
         # Add category header
         header = CategoryHeaderOption.new(cat[:name], cat[:description])
@@ -2485,7 +2963,7 @@ class ModSettingsScene < PokemonOption_Scene
       end
     end
     
-    return options
+    return auto_insert_spacers(options)
   end
 
   # Initializes and displays the Mod Settings scene
@@ -2598,6 +3076,7 @@ class ModSettingsScene < PokemonOption_Scene
       @sprites["option"].viewport = @viewport
       @sprites["option"].visible = true
       @sprites["option"].use_blue_colors = true if @sprites["option"].respond_to?(:use_blue_colors=)
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
       
       # Initialize values
       for i in 0...@PokemonOptions.length
@@ -2846,7 +3325,27 @@ module BattleCommandMenu
       @registry ||= []
     end
     
-    # Registers a new command to appear in the battle menu
+    # NEW: Simplified registration method using hash parameters
+    # @param options [Hash] Configuration hash with :name, :on_press, :description, :condition, :priority
+    # Usage:
+    #   BattleCommandMenu.register(
+    #     name: "My Command",
+    #     on_press: proc { |battle, idxBattler, scene| ... },
+    #     description: "Does something cool",
+    #     condition: proc { |battle, idxBattler| true },
+    #     priority: 50
+    #   )
+    def register(options = {})
+      registry << {
+        name: options[:name] || "Unnamed Command",
+        proc: options[:on_press] || options[:proc],
+        description: options[:description] || "",
+        condition: options[:condition],
+        priority: options[:priority] || 100
+      }
+    end
+    
+    # TRADITIONAL: Registers a new command to appear in the battle menu
     # @param name [String] Display name for the command
     # @param proc [Proc] Code to execute when command is selected (receives battle, idxBattler, scene)
     # @param description [String] Help text describing the command
@@ -3173,13 +3672,32 @@ module ModSettingsMenu
         @handlers ||= []
       end
       
-      # Registers a new PC mod action handler
+      # NEW: Simplified registration method using hash parameters
+      # @param options [Hash] Configuration hash with :name, :on_select, :condition, :supports_batch
+      # Usage:
+      #   ModSettingsMenu::PCModActions.register(
+      #     name: "Change Ability",
+      #     on_select: proc { |pokemon, selected, heldpoke, scene| ... },
+      #     condition: proc { |pokemon, selected, heldpoke| true },
+      #     supports_batch: true
+      #   )
+      def register(options = {})
+        handler = {
+          name: options[:name] || "Unnamed Action",
+          effect: options[:on_select] || options[:effect],
+          condition: options[:condition],
+          supports_batch: options.key?(:supports_batch) ? options[:supports_batch] : true
+        }
+        handlers << handler unless handlers.include?(handler)
+      end
+      
+      # TRADITIONAL: Registers a new PC mod action handler
       # @param handler [Hash] Handler definition with :name, :condition, :effect, :supports_batch keys
       #   :name - String or Proc returning the display name
       #   :condition - Optional Proc(pokemon) returning true/false if action is available
       #   :effect - Proc(pokemon, selected, heldpoke, scene) to execute the action
       #   :supports_batch - Boolean indicating if action can be applied to multiple Pokemon (default: true)
-      def register(handler)
+      def register_handler(handler)
         # Default supports_batch to true if not specified
         handler[:supports_batch] = true unless handler.key?(:supports_batch)
         handlers << handler unless handlers.include?(handler)
@@ -3345,7 +3863,7 @@ module ModSettingsMenu
     # Uses the game's built-in HTTPLite module
     def self.fetch_manifest
       begin
-        ModSettingsMenu.debug_log("Fetching manifest from: #{MANIFEST_URL}")
+        ModSettingsMenu.debug_log("ModSettings: Fetching manifest from: #{MANIFEST_URL}")
         
         # HTTPLite.get returns a hash with :status and :body keys
         response = HTTPLite.get(MANIFEST_URL)
@@ -3359,25 +3877,25 @@ module ModSettingsMenu
           
           # Parse JSON from response body using MiniJSON (game's built-in parser)
           manifest = MiniJSON.parse(body)
-          ModSettingsMenu.debug_log("Parsed manifest type: #{manifest.class}")
+          ModSettingsMenu.debug_log("ModSettings: Parsed manifest type: #{manifest.class}")
           
           # Validate that manifest is a Hash
           if manifest.is_a?(Hash)
-            ModSettingsMenu.debug_log("Manifest loaded successfully with #{manifest.keys.length} mods")
+            ModSettingsMenu.debug_log("ModSettings: Manifest loaded successfully with #{manifest.keys.length} mods")
             return manifest
           else
-            ModSettingsMenu.debug_log("Error: Parsed manifest is not a Hash, got #{manifest.class}: #{manifest.inspect}")
+            ModSettingsMenu.debug_log("ModSettings: Error: Parsed manifest is not a Hash, got #{manifest.class}: #{manifest.inspect}")
             return nil
           end
         else
           status = response.is_a?(Hash) ? response[:status] : "unknown"
-          ModSettingsMenu.debug_log("Failed to fetch manifest. Status: #{status}")
+          ModSettingsMenu.debug_log("ModSettings: Failed to fetch manifest. Status: #{status}")
           return nil
         end
       rescue => e
         # Error during download or JSON parsing
-        ModSettingsMenu.debug_log("Error fetching manifest: #{e.class} - #{e.message}")
-        ModSettingsMenu.debug_log("Backtrace: #{e.backtrace.first(3).join("\n")}")
+        ModSettingsMenu.debug_log("ModSettings: Error fetching manifest: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Backtrace: #{e.backtrace.first(3).join("\n")}")
         return nil
       end
     end
@@ -3545,7 +4063,7 @@ module ModSettingsMenu
     def self.get_base_dir
       # File.dirname(__FILE__) already gives us the game root in this environment
       base = File.expand_path(File.dirname(__FILE__))
-      ModSettingsMenu.debug_log("Using base directory: #{base}")
+      ModSettingsMenu.debug_log("ModSettings: Using base directory: #{base}")
       return base
     end
     
@@ -3553,22 +4071,22 @@ module ModSettingsMenu
     # Always creates in game root directory (where Game.exe is)
     def self.ensure_backup_dir
       base = get_base_dir
-      ModSettingsMenu.debug_log("Base game directory: #{base}")
+      ModSettingsMenu.debug_log("ModSettings: Base game directory: #{base}")
       
       backup_dir = File.join(base, "ModsBackup")
-      ModSettingsMenu.debug_log("ModsBackup path: #{backup_dir}")
+      ModSettingsMenu.debug_log("ModSettings: ModsBackup path: #{backup_dir}")
       
       unless Dir.exist?(backup_dir)
-        ModSettingsMenu.debug_log("Creating ModsBackup directory...")
+        ModSettingsMenu.debug_log("ModSettings: Creating ModsBackup directory...")
         begin
           Dir.mkdir(backup_dir)
-          ModSettingsMenu.debug_log("ModsBackup directory created successfully")
+          ModSettingsMenu.debug_log("ModSettings: ModsBackup directory created successfully")
         rescue => e
-          ModSettingsMenu.debug_log("Failed to create ModsBackup: #{e.class} - #{e.message}")
+          ModSettingsMenu.debug_log("ModSettings: Failed to create ModsBackup: #{e.class} - #{e.message}")
           raise
         end
       else
-        ModSettingsMenu.debug_log("ModsBackup directory already exists")
+        ModSettingsMenu.debug_log("ModSettings: ModsBackup directory already exists")
       end
       
       return backup_dir
@@ -3580,7 +4098,7 @@ module ModSettingsMenu
     # @param progress_callback [Proc, nil] Optional callback to report progress (receives percent 0-100)
     def self.download_file(url, progress_callback = nil)
       begin
-        ModSettingsMenu.debug_log("Downloading from: #{url}")
+        ModSettingsMenu.debug_log("ModSettings: Downloading from: #{url}")
         
         # Show initial progress
         progress_callback.call(0) if progress_callback
@@ -3592,15 +4110,15 @@ module ModSettingsMenu
         
         if response.is_a?(Hash) && response[:status] == 200
           content = response[:body]
-          ModSettingsMenu.debug_log("Download successful, size: #{content.length} bytes")
+          ModSettingsMenu.debug_log("ModSettings: Download successful, size: #{content.length} bytes")
           return content
         else
           status = response.is_a?(Hash) ? response[:status] : "unknown"
-          ModSettingsMenu.debug_log("Download failed, status: #{status}")
+          ModSettingsMenu.debug_log("ModSettings: Download failed, status: #{status}")
           return nil
         end
       rescue => e
-        ModSettingsMenu.debug_log("Download error: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Download error: #{e.class} - #{e.message}")
         return nil
       end
     end
@@ -3609,49 +4127,49 @@ module ModSettingsMenu
     # Returns true on success, false on failure
     def self.backup_mod(mod_path, version)
       begin
-        ModSettingsMenu.debug_log("Starting backup for: #{mod_path}")
-        ModSettingsMenu.debug_log("Version: #{version}")
+        ModSettingsMenu.debug_log("ModSettings: Starting backup for: #{mod_path}")
+        ModSettingsMenu.debug_log("ModSettings: Version: #{version}")
         
         unless File.exist?(mod_path)
-          ModSettingsMenu.debug_log("Error: Mod file does not exist: #{mod_path}")
+          ModSettingsMenu.debug_log("ModSettings: Error: Mod file does not exist: #{mod_path}")
           return false
         end
         
         backup_dir = ensure_backup_dir
-        ModSettingsMenu.debug_log("Using backup directory: #{backup_dir}")
+        ModSettingsMenu.debug_log("ModSettings: Using backup directory: #{backup_dir}")
         
         filename = File.basename(mod_path)
         date_str = Time.now.strftime("%Y-%m-%d")
         backup_name = filename.sub(/\.rb$/, "_v#{version}_#{date_str}.rb")
         backup_path = File.join(backup_dir, backup_name)
         
-        ModSettingsMenu.debug_log("Backup filename: #{backup_name}")
-        ModSettingsMenu.debug_log("Full backup path: #{backup_path}")
+        ModSettingsMenu.debug_log("ModSettings: Backup filename: #{backup_name}")
+        ModSettingsMenu.debug_log("ModSettings: Full backup path: #{backup_path}")
         
         # Read original file
         content = File.read(mod_path)
-        ModSettingsMenu.debug_log("Read #{content.length} bytes from original file")
+        ModSettingsMenu.debug_log("ModSettings: Read #{content.length} bytes from original file")
         
         # Write to backup
         begin
           File.open(backup_path, 'wb') { |f| f.write(content) }
-          ModSettingsMenu.debug_log("Backup file written successfully")
+          ModSettingsMenu.debug_log("ModSettings: Backup file written successfully")
         rescue => write_error
-          ModSettingsMenu.debug_log("Error writing backup file: #{write_error.class} - #{write_error.message}")
+          ModSettingsMenu.debug_log("ModSettings: Error writing backup file: #{write_error.class} - #{write_error.message}")
           return false
         end
         
         # Verify backup was created
         if File.exist?(backup_path)
-          ModSettingsMenu.debug_log("Verified: Backup file exists at #{backup_path}")
+          ModSettingsMenu.debug_log("ModSettings: Verified: Backup file exists at #{backup_path}")
           return true
         else
-          ModSettingsMenu.debug_log("Error: Backup file was not created")
+          ModSettingsMenu.debug_log("ModSettings: Error: Backup file was not created")
           return false
         end
       rescue => e
-        ModSettingsMenu.debug_log("Backup error: #{e.class} - #{e.message}")
-        ModSettingsMenu.debug_log("Backtrace: #{e.backtrace.first(3).join("\n")}")
+        ModSettingsMenu.debug_log("ModSettings: Backup error: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Backtrace: #{e.backtrace.first(3).join("\n")}")
         return false
       end
     end
@@ -3666,7 +4184,7 @@ module ModSettingsMenu
       begin
         # Backup current version
         unless backup_mod(mod_path, current_version)
-          ModSettingsMenu.debug_log("Warning: Backup failed, continuing anyway...")
+          ModSettingsMenu.debug_log("ModSettings: Warning: Backup failed, continuing anyway...")
         end
         
         # Download new version
@@ -3676,10 +4194,10 @@ module ModSettingsMenu
         # Write new version to same location
         File.open(mod_path, 'wb') { |f| f.write(content) }
         
-        ModSettingsMenu.debug_log("Successfully updated: #{File.basename(mod_path)}")
+        ModSettingsMenu.debug_log("ModSettings: Successfully updated: #{File.basename(mod_path)}")
         return true
       rescue => e
-        ModSettingsMenu.debug_log("Install error: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Install error: #{e.class} - #{e.message}")
         return false
       end
     end
@@ -3709,7 +4227,7 @@ module ModSettingsMenu
         # Sort by filename
         return backups.sort_by { |b| b[:filename] }
       rescue => e
-        ModSettingsMenu.debug_log("Error listing backups: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Error listing backups: #{e.class} - #{e.message}")
         return []
       end
     end
@@ -3726,7 +4244,7 @@ module ModSettingsMenu
         
         # Get base filename without extension
         mod_filename = File.basename(mod_path, ".rb")
-        ModSettingsMenu.debug_log("Looking for backups of: #{mod_filename}")
+        ModSettingsMenu.debug_log("ModSettings: Looking for backups of: #{mod_filename}")
         
         backups = []
         Dir.entries(backup_dir).each do |filename|
@@ -3752,7 +4270,7 @@ module ModSettingsMenu
                 date: date
               }
               
-              ModSettingsMenu.debug_log("Found backup: #{display}")
+              ModSettingsMenu.debug_log("ModSettings: Found backup: #{display}")
             end
           end
         end
@@ -3760,7 +4278,7 @@ module ModSettingsMenu
         # Sort by date descending (newest first)
         return backups.sort_by { |b| b[:date] }.reverse
       rescue => e
-        ModSettingsMenu.debug_log("Error listing backups for mod: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Error listing backups for mod: #{e.class} - #{e.message}")
         return []
       end
     end
@@ -3771,42 +4289,42 @@ module ModSettingsMenu
     # Returns true on success, false on failure
     def self.rollback_mod(mod_path, backup_path)
       begin
-        ModSettingsMenu.debug_log("Starting rollback...")
-        ModSettingsMenu.debug_log("Mod path: #{mod_path}")
-        ModSettingsMenu.debug_log("Backup path: #{backup_path}")
+        ModSettingsMenu.debug_log("ModSettings: Starting rollback...")
+        ModSettingsMenu.debug_log("ModSettings: Mod path: #{mod_path}")
+        ModSettingsMenu.debug_log("ModSettings: Backup path: #{backup_path}")
         
         # Verify backup exists
         unless File.exist?(backup_path)
-          ModSettingsMenu.debug_log("Error: Backup file does not exist")
+          ModSettingsMenu.debug_log("ModSettings: Error: Backup file does not exist")
           return false
         end
         
         # Verify mod file exists (we'll overwrite it)
         unless File.exist?(mod_path)
-          ModSettingsMenu.debug_log("Error: Mod file does not exist")
+          ModSettingsMenu.debug_log("ModSettings: Error: Mod file does not exist")
           return false
         end
         
         # Read backup content
         backup_content = File.read(backup_path)
-        ModSettingsMenu.debug_log("Read #{backup_content.length} bytes from backup")
+        ModSettingsMenu.debug_log("ModSettings: Read #{backup_content.length} bytes from backup")
         
         # Write backup content to mod file
         File.open(mod_path, 'wb') { |f| f.write(backup_content) }
-        ModSettingsMenu.debug_log("Wrote backup content to mod file")
+        ModSettingsMenu.debug_log("ModSettings: Wrote backup content to mod file")
         
         # Verify rollback
         if File.exist?(mod_path)
           new_size = File.size(mod_path)
-          ModSettingsMenu.debug_log("Rollback successful, new file size: #{new_size} bytes")
+          ModSettingsMenu.debug_log("ModSettings: Rollback successful, new file size: #{new_size} bytes")
           return true
         else
-          ModSettingsMenu.debug_log("Error: Mod file disappeared after rollback")
+          ModSettingsMenu.debug_log("ModSettings: Error: Mod file disappeared after rollback")
           return false
         end
         
       rescue => e
-        ModSettingsMenu.debug_log("Rollback error: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Rollback error: #{e.class} - #{e.message}")
         return false
       end
     end
@@ -3818,14 +4336,14 @@ module ModSettingsMenu
       begin
         if File.exist?(backup_path)
           File.delete(backup_path)
-          ModSettingsMenu.debug_log("Deleted backup: #{backup_path}")
+          ModSettingsMenu.debug_log("ModSettings: Deleted backup: #{backup_path}")
           return true
         else
-          ModSettingsMenu.debug_log("Backup file not found: #{backup_path}")
+          ModSettingsMenu.debug_log("ModSettings: Backup file not found: #{backup_path}")
           return false
         end
       rescue => e
-        ModSettingsMenu.debug_log("Error deleting backup: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Error deleting backup: #{e.class} - #{e.message}")
         return false
       end
     end
@@ -3873,10 +4391,10 @@ module ModSettingsMenu
           
           # Write file
           File.open(full_path, 'wb') { |f| f.write(content) }
-          ModSettingsMenu.debug_log("Installed graphic: #{rel_path}")
+          ModSettingsMenu.debug_log("ModSettings: Installed graphic: #{rel_path}")
           success += 1
         rescue => e
-          ModSettingsMenu.debug_log("Graphics install error: #{e.class} - #{e.message}")
+          ModSettingsMenu.debug_log("ModSettings: Graphics install error: #{e.class} - #{e.message}")
           failure += 1
         end
       end
@@ -3896,25 +4414,25 @@ module ModSettingsMenu
   # This is called from the game's version check hook
   def self.perform_auto_update_check
     begin
-      debug_log("Auto-update check: Starting...")
+      debug_log("ModSettings: Auto-update check: Starting...")
       
       # Check if auto-update is enabled
       setting = get(:mod_auto_update)
-      debug_log("Auto-update setting value: #{setting.inspect}")
+      debug_log("ModSettings: Auto-update setting value: #{setting.inspect}")
       
       unless setting == 1 || setting == true
-        debug_log("Auto-update check: Disabled, skipping")
+        debug_log("ModSettings: Auto-update check: Disabled, skipping")
         return
       end
       
-      debug_log("Auto-update check: Enabled, checking for updates...")
+      debug_log("ModSettings: Auto-update check: Enabled, checking for updates...")
       
       # Perform update check
       results = UpdateCheck.check_updates
       
       # Count total updates available
       if results[:error]
-        debug_log("Auto-update check failed: #{results[:error]}")
+        debug_log("ModSettings: Auto-update check failed: #{results[:error]}")
         return
       end
       
@@ -3923,13 +4441,13 @@ module ModSettingsMenu
       
       if updates_available.any?
         count = updates_available.length
-        debug_log("Auto-update found #{count} updates available")
+        debug_log("ModSettings: Auto-update found #{count} updates available")
         
         # Filter to only mods with download URLs
         updatable = updates_available.select { |mod| mod[:download_url] && !mod[:download_url].empty? }
         
         if updatable.empty?
-          debug_log("Auto-update: No mods support auto-update yet")
+          debug_log("ModSettings: Auto-update: No mods support auto-update yet")
           pbMessage(_INTL("{1} mod update(s) available, but auto-update not supported yet.\n\nCheck 'Mod Updates' in Options menu.", count)) if defined?(pbMessage)
           return
         end
@@ -3943,7 +4461,7 @@ module ModSettingsMenu
           confirmed = AutoUpdateNotificationScene.show_and_confirm(updatable, skip_confirm)
           
           if confirmed
-            debug_log("Auto-update: User confirmed, updating #{updatable.length} mods")
+            debug_log("ModSettings: Auto-update: User confirmed, updating #{updatable.length} mods")
             success_count = 0
             failure_count = 0
             
@@ -3985,15 +4503,15 @@ module ModSettingsMenu
               end
             end
           else
-            debug_log("Auto-update: User cancelled")
+            debug_log("ModSettings: Auto-update: User cancelled")
           end
         end
       else
-        debug_log("Auto-update check complete: All mods up to date")
+        debug_log("ModSettings: Auto-update check complete: All mods up to date")
       end
     rescue => e
-      debug_log("Auto-update check error: #{e.class} - #{e.message}")
-      debug_log("Backtrace: #{e.backtrace.first(3).join('\n')}")
+      debug_log("ModSettings: Auto-update check error: #{e.class} - #{e.message}")
+      debug_log("ModSettings: Backtrace: #{e.backtrace.first(3).join('\n')}")
     end
   end
 end
@@ -4002,11 +4520,11 @@ end
 begin
   if defined?(ModSettingsMenu) && ModSettingsMenu.get(:mod_auto_update).nil?
     ModSettingsMenu.set(:mod_auto_update, 0)  # Default: Off
-    ModSettingsMenu.debug_log("Initialized mod_auto_update setting to 0 (Off)")
+    ModSettingsMenu.debug_log("ModSettings: Initialized mod_auto_update setting to 0 (Off)")
   end
   if defined?(ModSettingsMenu) && ModSettingsMenu.get(:mod_auto_update_confirm).nil?
     ModSettingsMenu.set(:mod_auto_update_confirm, 1)  # Default: On (ask for confirmation)
-    ModSettingsMenu.debug_log("Initialized mod_auto_update_confirm setting to 1 (On)")
+    ModSettingsMenu.debug_log("ModSettings: Initialized mod_auto_update_confirm setting to 1 (On)")
   end
 rescue
   # Silently fail during initialization
@@ -4028,7 +4546,7 @@ if defined?(PokemonLoadScreen)
     def pbStartLoadScreen
       # Log that we're starting the load screen
       begin
-        ModSettingsMenu.debug_log("=== pbStartLoadScreen called ===")
+        ModSettingsMenu.debug_log("ModSettings: === pbStartLoadScreen called ===")
       rescue
       end
       
@@ -4037,17 +4555,17 @@ if defined?(PokemonLoadScreen)
       
       # Trigger mod auto-update check if enabled
       begin
-        ModSettingsMenu.debug_log("Attempting to call perform_auto_update_check")
+        ModSettingsMenu.debug_log("ModSettings: Attempting to call perform_auto_update_check")
         if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:perform_auto_update_check)
-          ModSettingsMenu.debug_log("ModSettingsMenu.perform_auto_update_check exists, calling it...")
+          ModSettingsMenu.debug_log("ModSettings: ModSettingsMenu.perform_auto_update_check exists, calling it...")
           ModSettingsMenu.perform_auto_update_check
         else
-          ModSettingsMenu.debug_log("ERROR: ModSettingsMenu.perform_auto_update_check not found!")
+          ModSettingsMenu.debug_log("ModSettings: ERROR: ModSettingsMenu.perform_auto_update_check not found!")
         end
       rescue => e
         # Log error but don't block game startup
         begin
-          ModSettingsMenu.debug_log("Error in auto-update hook: #{e.class} - #{e.message}")
+          ModSettingsMenu.debug_log("ModSettings: Error in auto-update hook: #{e.class} - #{e.message}")
         rescue
         end
       end
@@ -4333,14 +4851,14 @@ COLOR_THEMES = {
 # Custom Window for Color Scene to show colors in their respective colors
 class Window_PokemonOption_Color < Window_PokemonOption
   def drawItem(index, _count, rect)
-    # For the Category Theme option (index 1), draw label normally but value in its color
-    if index == 1 && @options[index]
+    # For both Menu Theme (index 0) and Category Theme (index 1), draw with aligned values
+    if (index == 0 || index == 1) && @options[index]
       return if dont_draw_item(index)
       rect = drawCursor(index, rect)
       
       # Draw the option name (label) in normal menu colors
       optionname = @options[index].name
-      optionwidth = rect.width * 9 / 20
+      optionwidth = rect.width * 12 / 20  # Changed to 12/20 (60% label, 40% value) to push sliders right
       pbDrawShadowText(self.contents, rect.x, rect.y, optionwidth, rect.height, optionname,
                        @nameBaseColor, @nameShadowColor)
       
@@ -4350,7 +4868,7 @@ class Window_PokemonOption_Color < Window_PokemonOption
       theme_key = COLOR_THEMES.keys[optionvalue]
       theme = COLOR_THEMES[theme_key] if theme_key
       
-      # Draw the value text in the color it represents
+      # Draw the value text in the color it represents (aligned at same x position)
       if theme && theme[:base] && theme[:shadow]
         xpos = optionwidth + rect.x
         pbDrawShadowText(self.contents, xpos, rect.y, optionwidth, rect.height, value,
@@ -4425,6 +4943,11 @@ class ModSettingsColorScene < PokemonOption_Scene
     # Set custom title
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Mod Settings Colors"), 0, 0, Graphics.width, 64, @viewport)
+    
+    # Enable custom spacing
+    if @sprites["option"] && @sprites["option"].respond_to?(:modsettings_menu=)
+      @sprites["option"].modsettings_menu = true
+    end
     
     # Apply current color theme
     theme_index = ModSettingsMenu.get(:modsettings_color_theme) || 0
@@ -4509,4 +5032,124 @@ if defined?(ModSettingsMenu)
   if ModSettingsMenu.get(:modsettings_category_theme).nil?
     ModSettingsMenu.set(:modsettings_category_theme, 3)  # Default to red
   end
+end
+
+# ============================================================================
+# REGISTRATION EXAMPLES SCENE
+# ============================================================================
+# Shows all test examples in a submenu
+# ============================================================================
+class RegistrationExamplesScene < PokemonOption_Scene
+  include ModSettingsSpacing
+  def pbGetOptions(inloadscreen = false)
+    options = []
+    
+    # Toggle Example
+    options << EnumOption.new(
+      _INTL("Test Toggle"),
+      [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:test_toggle) || 0 },
+      proc { |value| ModSettingsMenu.set(:test_toggle, value) }
+    )
+    
+    # Enum Example - 7 options to test multi-row layout (3 rows)
+    options << EnumOption.new(
+      _INTL("Test Dropdown"),
+      ["Option A", "Option B", "Option C", "Option D", "Option E", "Option F", "Option G"],
+      proc { ModSettingsMenu.get(:test_enum) || 0 },
+      proc { |value| ModSettingsMenu.set(:test_enum, value) }
+    )
+    
+    # Number Example
+    options << NumberOption.new(
+      _INTL("Test Number (0-999)"),
+      0, 999,
+      proc { ModSettingsMenu.get(:test_number) || 50 },
+      proc { |value| ModSettingsMenu.set(:test_number, value) }
+    )
+    
+    # Slider Example
+    options << SliderOption.new(
+      _INTL("Test Slider (0-100 by 5)"),
+      0, 100, 5,
+      proc { ModSettingsMenu.get(:test_slider) || 50 },
+      proc { |value| ModSettingsMenu.set(:test_slider, value) }
+    )
+    
+    # Button Example
+    options << ButtonOption.new(
+      _INTL("Show All Test Values"),
+      proc {
+        toggle_val = ModSettingsMenu.get(:test_toggle)
+        enum_val = ModSettingsMenu.get(:test_enum)
+        number_val = ModSettingsMenu.get(:test_number)
+        slider_val = ModSettingsMenu.get(:test_slider)
+        
+        msg = "Test Values:\n"
+        msg += "Toggle: #{toggle_val == 1 ? "On" : "Off"}\n"
+        msg += "Enum: #{enum_val}\n"
+        msg += "Number: #{number_val}\n"
+        msg += "Slider: #{slider_val}"
+        
+        pbMessage(msg) if defined?(pbMessage)
+      }
+    )
+    
+    return auto_insert_spacers(options)
+  end
+  
+  def pbStartScene(inloadscreen = false)
+    super
+    
+    # Set custom title
+    @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
+      _INTL("Registration Examples"), 0, 0, Graphics.width, 64, @viewport)
+    
+    # Apply current color theme (same as Mod Settings menu)
+    if @sprites["option"]
+      # Set flag for custom slider spacing
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
+      
+      theme_index = ModSettingsMenu.get(:modsettings_color_theme) || 0
+      theme_key = COLOR_THEMES.keys[theme_index]
+      if theme_key
+        theme = COLOR_THEMES[theme_key]
+        if theme[:base] && theme[:shadow]
+          @sprites["option"].nameBaseColor = theme[:base]
+          @sprites["option"].nameShadowColor = theme[:shadow]
+          @sprites["option"].selBaseColor = theme[:base]
+          @sprites["option"].selShadowColor = theme[:shadow]
+        end
+      end
+    end
+    
+    # Initialize values
+    for i in 0...@PokemonOptions.length
+      @sprites["option"][i] = (@PokemonOptions[i].get || 0)
+    end
+    @sprites["option"].refresh
+    
+    pbFadeInAndShow(@sprites) { pbUpdate }
+  end
+end
+
+if defined?(ModSettingsMenu)
+  # Initialize test setting values if they don't exist
+  ModSettingsMenu.set(:test_toggle, 0) if ModSettingsMenu.get(:test_toggle).nil?
+  ModSettingsMenu.set(:test_enum, 0) if ModSettingsMenu.get(:test_enum).nil?
+  ModSettingsMenu.set(:test_number, 50) if ModSettingsMenu.get(:test_number).nil?
+  ModSettingsMenu.set(:test_slider, 50) if ModSettingsMenu.get(:test_slider).nil?
+  
+  # Registration Examples Button - Opens submenu with all test examples
+  ModSettingsMenu.register(:registration_examples, {
+    name: "Registration Examples",
+    type: :button,
+    description: "View working examples of all registration types",
+    on_press: proc {
+      scene = RegistrationExamplesScene.new
+      screen = PokemonOptionScreen.new(scene)
+      screen.pbStartScreen
+    },
+    category: "Debug & Developer"
+  })
 end

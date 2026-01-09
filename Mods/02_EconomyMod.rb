@@ -2,7 +2,7 @@
 # Economy Mod
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.7.1 
+# Script Version: 1.7.2 
 # Author: Stonewall
 #========================================
 
@@ -2876,7 +2876,7 @@ begin
     )
 
     begin
-      ModSettingsMenu.register_option(btn, :economy_mod, "Economy & Rewards")
+      ModSettingsMenu.register_option(btn, :economy_mod, "Economy")
     rescue
     end
   end
