@@ -34,7 +34,8 @@ module EconomyMod
         if elapsed < 0 || elapsed >= sale_duration_seconds
           clear_sale
         end
-      rescue
+      rescue => e
+        ModSettingsMenu.debug_log("EconomyMod: Error validating sale data: #{e.class} - #{e.message}") if defined?(ModSettingsMenu)
       end
     end
 
@@ -45,12 +46,14 @@ module EconomyMod
         overrides.each do |k, v|
           begin
             id = (k.is_a?(Symbol) || k.is_a?(String)) ? GameData::Item.get(k).id : k
-          rescue
+          rescue => e
+            ModSettingsMenu.debug_log("EconomyMod: Error converting item key #{k}: #{e.class}") if defined?(ModSettingsMenu)
             id = k
           end
           $game_temp.mart_sale_percent[id] = v
         end
       end
+      ModSettingsMenu.debug_log("EconomyMod: Sale started - Default: #{default_percent}%, Overrides: #{overrides ? overrides.size : 0}") if defined?(ModSettingsMenu)
     end
 
     def self.clear_sale
@@ -61,6 +64,7 @@ module EconomyMod
           $game_system.mart_sale_data = nil
         end
         $game_temp.mart_sale_announced = false if $game_temp.respond_to?(:mart_sale_announced=)
+        ModSettingsMenu.debug_log("EconomyMod: Sale cleared") if defined?(ModSettingsMenu)
     end
 
     def self.clear_transient_sale
@@ -75,7 +79,8 @@ module EconomyMod
         begin
           t = pbGetTimeNow
           return t.to_i if t
-        rescue
+        rescue => e
+          ModSettingsMenu.debug_log("EconomyMod: Error getting time from pbGetTimeNow: #{e.class}") if defined?(ModSettingsMenu)
         end
       end
       gs = $game_system
@@ -88,7 +93,8 @@ module EconomyMod
       if defined?(Graphics) && Graphics.respond_to?(:frame_count) && Graphics.respond_to?(:frame_rate)
         begin
           return (Graphics.frame_count / Graphics.frame_rate.to_f).to_i
-        rescue
+        rescue => e
+          ModSettingsMenu.debug_log("EconomyMod: Error calculating time from Graphics: #{e.class}") if defined?(ModSettingsMenu)
         end
       end
       return 0
@@ -161,7 +167,8 @@ module EconomyMod
       stock.each do |it|
         begin
           id = GameData::Item.get(it).id
-        rescue
+        rescue => e
+          ModSettingsMenu.debug_log("EconomyMod: Error getting item ID for #{it}: #{e.class}") if defined?(ModSettingsMenu)
           id = it
         end
         ids << id if id
@@ -421,7 +428,8 @@ module EconomyMod
         if elapsed < 0 || elapsed >= duration_seconds
           clear_markup
         end
-      rescue
+      rescue => e
+        ModSettingsMenu.debug_log("EconomyMod: Error validating markup data: #{e.class} - #{e.message}") if defined?(ModSettingsMenu)
       end
     end
 
@@ -463,6 +471,7 @@ module EconomyMod
       if $game_system.respond_to?(:mart_markup_data=)
         $game_system.mart_markup_data = nil
       end
+      ModSettingsMenu.debug_log("EconomyMod: Markup cleared") if defined?(ModSettingsMenu)
     end
 
     def self.clear_transient_markup
@@ -482,7 +491,8 @@ module EconomyMod
       if defined?(ModSettingsMenu)
         begin
           return nil if ModSettingsMenu.get(:economymod_markups) == 0
-        rescue
+        rescue => e
+          ModSettingsMenu.debug_log("EconomyMod: Error checking markup setting: #{e.class}") if defined?(ModSettingsMenu)
         end
       end
       begin
@@ -2871,4 +2881,13 @@ if defined?(ModSettingsMenu::ModRegistry)
     graphics: [],
     dependencies: [{name: '01_Mod_Settings', version: '3.1.3'}]
   )
+  
+  # Log initialization with version from registration
+  begin
+    version = ModSettingsMenu::ModRegistry.all["02_EconomyMod.rb"][:version] rescue nil
+    version_str = version ? "v#{version}" : "(version unknown)"
+    ModSettingsMenu.debug_log("EconomyMod: Economy Mod #{version_str} loaded successfully")
+  rescue
+    # Silently fail if we can't log
+  end
 end

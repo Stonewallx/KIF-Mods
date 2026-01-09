@@ -4,6 +4,9 @@ Version 1.8.1 (January 9, 2026)
 [NEW]
 - Added auto-update registration information.
 
+[CHANGED]
+- Updated all debug logging to include a prefix.
+
 [FIXED]
 - Fixed transition issue for menu/submenus.
 

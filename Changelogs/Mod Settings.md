@@ -3,6 +3,7 @@ Version 3.1.3 (January 9, 2026)
 ---------------------------
 [CHANGED]
 - Changed Auto-update system to now use self-registration blocks so that mod authors can put them in their mods without needing me. Also updated the documentation to reflect this. Version checks will still happen on mods that use ```# Script Version: X.Y.Z``` in headers of the mod files so that users can still show what version they have for troubleshooting, they will just not check for updates. 
+- Updated all debug logging to include a prefix.
 
 [FIXED]
 - Fixed transition issue for menu/submenus.

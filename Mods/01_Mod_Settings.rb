@@ -7,15 +7,6 @@
 #========================================
 #
 # DOCUMENTATION: See "Mod_Settings_Documentation.md" for full guide
-# Log mod initialization
-begin
-  mod_debug_path = "ModsDebug.txt"
-  File.open(mod_debug_path, "a") do |f|
-    f.puts("[#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}] Mod Settings Menu v3.1.0 loaded successfully")
-  end
-rescue
-  # Silently fail if we can't write to debug file during early initialization
-end
 #
 # QUICK START:
 #   ModSettingsMenu.register(:my_setting, {
@@ -58,14 +49,15 @@ MOD_CATEGORIES = [
 # ============================================================================
 
 module ModSettingsMenu
-  # Debug log file path
-  MOD_DEBUG_FILE = "ModsDebug.txt"
-  
-  # Write debug message to ModsDebug.txt file
+  # Write debug message to ModsDebug.txt file in save folder
   def self.debug_log(message)
     begin
-      File.open(MOD_DEBUG_FILE, "a") do |f|
-        f.puts("[#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}] #{message}")
+      save_folder = RTP.getSaveFolder rescue nil
+      if save_folder
+        log_file = File.join(save_folder, "ModsDebug.txt")
+        File.open(log_file, "a") do |f|
+          f.puts("[#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}] #{message}")
+        end
       end
     rescue
       # Silently fail if we can't write to debug file
@@ -1331,7 +1323,7 @@ class ModUpdatesScene < PokemonOption_Scene
     
     # Set custom title
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
-      _INTL("Mod Updates"), 0, 0, Graphics.width, 64, @viewport)
+      _INTL("Mod Auto-Update"), 0, 0, Graphics.width, 64, @viewport)
     
     # Enable color theme and custom spacing
     if @sprites["option"]
@@ -3790,12 +3782,12 @@ module ModSettingsMenu
     def self.collect
       mods = []
       registered = ModRegistry.all
-      scanned_files = []
+      scanned_filenames = []
       
       # First, add all registered mods
       registered.each do |filename, info|
         path = find_mod_path(filename)
-        scanned_files << path.downcase if path
+        scanned_filenames << filename.downcase
         
         mod_name = File.basename(filename, ".rb")
         mods << {
@@ -3813,9 +3805,9 @@ module ModSettingsMenu
         next unless Dir.exist?(dir)
         
         Dir.glob(File.join(dir, "*.rb")).each do |file_path|
-          next if scanned_files.include?(file_path.downcase)
-          
           filename = File.basename(file_path)
+          next if scanned_filenames.include?(filename.downcase)
+          
           mod_name = File.basename(filename, ".rb")
           
           # Extract version from file header (if present)
@@ -3892,6 +3884,11 @@ module ModSettingsMenu
     def self.register(info)
       return unless info.is_a?(Hash) && info[:file]
       
+      # Check if this is a new registration or version change
+      existing = @registered_mods[info[:file]]
+      is_new = existing.nil?
+      version_changed = existing && existing[:version] != info[:version]
+      
       @registered_mods[info[:file]] = {
         name: info[:name],
         file: info[:file],
@@ -3902,7 +3899,10 @@ module ModSettingsMenu
         dependencies: info[:dependencies] || []
       }
       
-      ModSettingsMenu.debug_log("ModSettings: Registered mod - #{info[:file]} v#{info[:version]}")
+      # Only log if new or version changed
+      if is_new || version_changed
+        ModSettingsMenu.debug_log("ModSettings: Registered mod - #{info[:file]} v#{info[:version]}")
+      end
     end
     
     # Get all registered mods
@@ -3941,25 +3941,27 @@ module ModSettingsMenu
         if response.is_a?(Hash) && response[:status] == 200
           content = response[:body]
           
-          # Parse the registration block to extract version
-          # Look for: ModRegistry.register(
-          if content =~ /ModRegistry\.register\s*\(/
-            # Extract the hash content between register( and the closing )
-            # This regex captures the content between parentheses
-            if content =~ /ModRegistry\.register\s*\(\s*({[^}]*}|[^)]*)\s*\)/m
-              reg_block = $1
-              
-              # Extract version from the registration block
-              # Look for: version: "X.Y.Z"
-              if reg_block =~ /version:\s*["']([^"']+)["']/
-                version = $1
-                ModSettingsMenu.debug_log("ModSettings: Found remote version: #{version}")
-                return version
-              end
+          # Find the registration block (with or without namespace)
+          # Search for ModSettingsMenu::ModRegistry.register OR ModRegistry.register
+          reg_pos = content.index(/ModSettingsMenu::ModRegistry\.register\s*\(/) || content.index(/ModRegistry\.register\s*\(/)
+          
+          if reg_pos
+            # Extract a chunk after the registration (2000 chars should be plenty for any registration block)
+            chunk = content[reg_pos, 2000]
+            ModSettingsMenu.debug_log("ModSettings: Found registration at position #{reg_pos}")
+            
+            # Search for version: "X.Y.Z" pattern within this chunk
+            if chunk =~ /version:\s*["']([^"']+)["']/
+              version = $1
+              ModSettingsMenu.debug_log("ModSettings: Found remote version: #{version}")
+              return version
+            else
+              ModSettingsMenu.debug_log("ModSettings: Could not find 'version:' in registration chunk")
             end
+          else
+            ModSettingsMenu.debug_log("ModSettings: Could not find ModRegistry.register in remote file")
           end
           
-          ModSettingsMenu.debug_log("ModSettings: Could not find version in remote registration block")
           return nil
         else
           status = response.is_a?(Hash) ? response[:status] : "unknown"
@@ -5278,4 +5280,13 @@ if defined?(ModSettingsMenu::ModRegistry)
     graphics: [],
     dependencies: []
   )
+  
+  # Log initialization with version from registration
+  begin
+    version = ModSettingsMenu::ModRegistry.all["01_Mod_Settings.rb"][:version] rescue nil
+    version_str = version ? "v#{version}" : "(version unknown)"
+    ModSettingsMenu.debug_log("ModSettings: Mod Settings Menu #{version_str} loaded successfully")
+  rescue
+    # Silently fail if we can't log
+  end
 end
