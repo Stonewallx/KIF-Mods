@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.1.3
+# Script Version: 3.1.4
 # Author: Stonewall
 #========================================
 #
@@ -39,6 +39,50 @@ MOD_CATEGORIES = [
   {name: "Debug & Developer",     priority: 999, description: "Testing tools, debug options"},
   {name: "-----------------",     priority: 1000, description: "Separator" },
 ]
+
+# ============================================================================
+# STONE SLIDER OPTION - Supports negative values
+# ============================================================================
+# Custom slider that stores actual values instead of offsets, allowing negative ranges
+class StoneSliderOption < Option
+  include PropertyMixin
+  attr_reader :name
+  attr_reader :optstart
+  attr_reader :optend
+
+  def initialize(name, optstart, optend, optinterval, getProc, setProc, description = "")
+    super(description)
+    @name = name
+    @optstart = optstart
+    @optend = optend
+    @optinterval = optinterval
+    @getProc = getProc
+    @setProc = setProc
+  end
+
+  def next(current)
+    current += @optinterval
+    current = @optend if current > @optend
+    return current
+  end
+
+  def prev(current)
+    current -= @optinterval
+    current = @optstart if current < @optstart
+    return current
+  end
+
+  # Generate array of all possible values (for compatibility with base option system)
+  def values
+    result = []
+    val = @optstart
+    while val <= @optend
+      result.push(val.to_s)
+      val += @optinterval
+    end
+    return result
+  end
+end
 
 # ============================================================================
 # MOD SETTINGS MENU - CORE MODULE
@@ -292,7 +336,10 @@ module ModSettingsMenu
     # @return [SliderOption] The created option object
     def register_slider(key, name, startv, endv, interval, default, description = "", category = nil)
       category = "Uncategorized" if category.nil? || category.to_s.strip.empty?
-      opt = SliderOption.new(name, startv, endv, interval, proc { ModSettingsMenu.get(key) || 0 }, proc { |v| ModSettingsMenu.set(key, v) }, description)
+      opt = StoneSliderOption.new(name, startv, endv, interval, 
+        proc { ModSettingsMenu.get(key) || default }, 
+        proc { |v| ModSettingsMenu.set(key, v) }, 
+        description)
       registry << {:key => key, :option => opt, :category => category}
       ensure_storage
       st = storage
@@ -842,6 +889,14 @@ class SpacerOption < Option
   def set(value)
   end
   
+  def next(current)
+    return current
+  end
+  
+  def prev(current)
+    return current
+  end
+  
   # Override format to return an empty string
   def format(value)
     return ""
@@ -1311,6 +1366,22 @@ class ModUpdatesScene < PokemonOption_Scene
     options = []
     options << CheckUpdatesOption.new
     options << UpdateAllModsOption.new
+    
+    # Restart Game button - TEMPORARILY DISABLED until stack overflow issues are fixed
+    # restart_callback = proc {
+    #   if pbConfirmMessage(_INTL("Restart the game now?"))
+    #     pbMessage(_INTL("Restarting game..."))
+    #     begin
+    #       raise Reset.new
+    #     rescue SystemStackError => e
+    #       pbMessage(_INTL("Restart failed - try using F12 key instead"))
+    #     rescue => e
+    #       pbMessage(_INTL("Restart failed - check debug log"))
+    #     end
+    #   end
+    # }
+    # options << ButtonOption.new("Restart Game", restart_callback, "Restart the game to apply updates")
+    
     options << AutoUpdateOption.new
     options << AutoUpdateConfirmOption.new
     options << DeleteBackupOption.new
@@ -1477,7 +1548,7 @@ class CategoryHeaderOption < Option
     end
     
     indicator = value == 1 ? "+" : "-"
-    return "#{indicator} #{@name}"
+    return "#{indicator} #{@name} #{indicator}"
   end
   
   # Return empty values array (category headers don't cycle through values)
@@ -2681,10 +2752,10 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
                 # Toggles start at normal position (optionwidth)
                 xpos = optionwidth + rect.x
               else
-                # For dropdowns (3 values), reduce spacing by 25%
-                spacing = spacing * 3 / 4
-                # Dropdowns start 95px left of normal position - moved 5px right
-                xpos = optionwidth + rect.x - 95
+                # For dropdowns (3 values), reduce spacing by 50% (tighter)
+                spacing = spacing / 2
+                # Dropdowns start 65px left of normal position
+                xpos = optionwidth + rect.x - 65
               end
               
               spacing = 0 if spacing < 0
@@ -2710,21 +2781,59 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
           xpos = optionwidth + rect.x
           pbDrawShadowText(self.contents, xpos, rect.y, optionwidth, rect.height, value,
                            @selBaseColor, @selShadowColor)
+        elsif @options[index].is_a?(StoneSliderOption)
+          # Stone's custom slider rendering - Fixed bar length for consistent appearance
+          fixed_bar_length = 108
+          
+          # Calculate tick position: map value to position on bar
+          min_val = @options[index].optstart
+          max_val = @options[index].optend
+          current_val = self[index]
+          
+          # Ensure value is within range
+          current_val = [[current_val, min_val].max, max_val].min
+          
+          # Calculate tick position as percentage of bar (0.0 to 1.0)
+          range = max_val - min_val
+          range = 1 if range == 0  # Prevent division by zero
+          percentage = (current_val - min_val).to_f / range
+          
+          # Position bar and tick (shifted 10px right)
+          bar_x = optionwidth + rect.x + 10
+          bar_y = rect.y - 2 + rect.height / 2
+          tick_width = 8
+          tick_height = 16
+          
+          # Draw slider bar (fixed length)
+          self.contents.fill_rect(bar_x, bar_y, fixed_bar_length, 4, self.baseColor)
+          
+          # Calculate tick position (subtract half tick width for centering)
+          tick_x = bar_x + (percentage * (fixed_bar_length - tick_width)).round
+          tick_y = bar_y - 6
+          
+          # Draw tick
+          self.contents.fill_rect(tick_x, tick_y, tick_width, tick_height, @selBaseColor)
+          
+          # Draw current value to the right of the bar
+          value = sprintf("%d", current_val)
+          value_x = bar_x + fixed_bar_length + 8
+          pbDrawShadowText(self.contents, value_x, rect.y, 80, rect.height, value,
+                           @selBaseColor, @selShadowColor)
         elsif @options[index].is_a?(SliderOption)
-          # Custom slider sizing for Mod Settings: 65% of available width
-          sliderwidth = optionwidth * 13 / 20
+          # Base KIF slider rendering (uses reasonable width instead of full optionwidth)
           value = sprintf(" %d", @options[index].optend)
-          sliderlength = sliderwidth - self.contents.text_size(value).width
-          xpos = optionwidth + rect.x - 20  # Move slider left by 20 pixels
-          self.contents.fill_rect(xpos, rect.y - 2 + rect.height / 2,
-                                  sliderwidth - self.contents.text_size(value).width, 4, self.baseColor)
+          available_width = rect.width * 8 / 20  # Use 40% of total width for slider area (not the full optionwidth)
+          sliderlength = available_width - self.contents.text_size(value).width
+          sliderlength = [sliderlength, 108].min  # Cap at 108px max to match StoneSliderOption
+          xpos = optionwidth + rect.x
+          self.contents.fill_rect(xpos, rect.y - 2 + rect.height / 2, sliderlength, 4, self.baseColor)
           self.contents.fill_rect(
             xpos + (sliderlength - 8) * (@options[index].optstart + self[index]) / @options[index].optend,
             rect.y - 8 + rect.height / 2,
             8, 16, @selBaseColor)
           value = sprintf("%d", @options[index].optstart + self[index])
-          xpos += sliderwidth - self.contents.text_size(value).width
-          pbDrawShadowText(self.contents, xpos, rect.y, sliderwidth, rect.height, value,
+          xpos += sliderlength + 8
+          pbDrawShadowText(self.contents, xpos, rect.y, 80, rect.height, value,
                            @selBaseColor, @selShadowColor)
         end
       end
@@ -4566,24 +4675,40 @@ module ModSettingsMenu
               end
             end
             
-            # Show completion message
+            # Show completion message and handle restart
             if failure_count > 0
-              pbMessage(sprintf("Updates complete! %d succeeded, %d failed. Please restart the game for changes to take effect.", success_count, failure_count)) if defined?(pbMessage)
-              # Wait for USE button press
-              loop do
-                Graphics.update
-                Input.update
-                break if Input.trigger?(Input::USE) || Input.trigger?(Input::BACK)
-              end
+              pbMessage(sprintf("Updates complete! %d succeeded, %d failed.", success_count, failure_count)) if defined?(pbMessage)
             else
-              pbMessage(sprintf("All %d mod(s) updated! Please restart the game for changes to take effect.", success_count)) if defined?(pbMessage)
-              # Wait for USE button press
-              loop do
-                Graphics.update
-                Input.update
-                break if Input.trigger?(Input::USE) || Input.trigger?(Input::BACK)
-              end
+              pbMessage(sprintf("All %d mod(s) updated successfully!", success_count)) if defined?(pbMessage)
             end
+            
+            # Handle restart based on confirmation setting - TEMPORARILY DISABLED
+            # if skip_confirm
+            #   # Auto-restart without asking (confirmation was OFF)
+            #   pbMessage(_INTL("Restarting game now...")) if defined?(pbMessage)
+            #   begin
+            #     raise Reset.new
+            #   rescue SystemStackError => e
+            #     pbMessage(_INTL("Auto-restart failed - try using F12 key instead")) if defined?(pbMessage)
+            #   rescue => e
+            #     pbMessage(_INTL("Auto-restart failed - check debug log")) if defined?(pbMessage)
+            #   end
+            # else
+            #   # Ask if user wants to restart (confirmation was ON)
+            #   if pbConfirmMessage(_INTL("Restart the game now to apply updates?"))
+            #     pbMessage(_INTL("Restarting game...")) if defined?(pbMessage)
+            #     begin
+            #       raise Reset.new
+            #     rescue SystemStackError => e
+            #       pbMessage(_INTL("Restart failed - try using F12 key instead")) if defined?(pbMessage)
+            #     rescue => e
+            #       pbMessage(_INTL("Restart failed - check debug log")) if defined?(pbMessage)
+            #     end
+            #   end
+            # end
+            
+            # For now, just show completion message without restart
+            pbMessage(_INTL("Updates complete! Use F12 to restart when ready.")) if defined?(pbMessage)
           else
             debug_log("ModSettings: Auto-update: User cancelled")
           end
@@ -5176,12 +5301,12 @@ class RegistrationExamplesScene < PokemonOption_Scene
     )
     
     # Slider Example
-    options << SliderOption.new(
-      _INTL("Test Slider (0-100 by 5)"),
-      0, 100, 5,
-      proc { ModSettingsMenu.get(:test_slider) || 50 },
+    options << StoneSliderOption.new(
+      _INTL("Test Slider (-10 to 100 by 5)"),
+      -10, 100, 5,
+      proc { ModSettingsMenu.get(:test_slider) || 0 },
       proc { |value| ModSettingsMenu.set(:test_slider, value) },
-      _INTL("Example slider option - Adjust value between 0 and 100")
+      _INTL("Example slider option - Adjust value between -10 and 100")
     )
     
     # Button Example
@@ -5247,7 +5372,7 @@ if defined?(ModSettingsMenu)
   ModSettingsMenu.set(:test_toggle, 0) if ModSettingsMenu.get(:test_toggle).nil?
   ModSettingsMenu.set(:test_enum, 0) if ModSettingsMenu.get(:test_enum).nil?
   ModSettingsMenu.set(:test_number, 50) if ModSettingsMenu.get(:test_number).nil?
-  ModSettingsMenu.set(:test_slider, 50) if ModSettingsMenu.get(:test_slider).nil?
+  ModSettingsMenu.set(:test_slider, 0) if ModSettingsMenu.get(:test_slider).nil?
   
   # Registration Examples Button - Opens submenu with all test examples
   ModSettingsMenu.register(:registration_examples, {
@@ -5274,7 +5399,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Mod Settings",
     file: "01_Mod_Settings.rb",
-    version: "3.1.3",
+    version: "3.1.4",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     graphics: [],
@@ -5290,3 +5415,5 @@ if defined?(ModSettingsMenu::ModRegistry)
     # Silently fail if we can't log
   end
 end
+
+

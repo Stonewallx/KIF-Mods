@@ -2,7 +2,7 @@
 # Economy Mod
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.8.1
+# Script Version: 1.8.2
 # Author: Stonewall
 #========================================
 
@@ -2669,7 +2669,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Initial Money Amount
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Initial Money Amount"),
       0, 10000, 500,
       proc { ModSettingsMenu.get(:economymod_starting_money) || 3000 },
@@ -2687,7 +2687,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Battle Money Multiplier
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Battle Money x Amount"),
       1, 10, 1,
       proc { ModSettingsMenu.get(:economymod_battle_money_multiplier) || 1 },
@@ -2705,7 +2705,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # PokeVial Cost Amount
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("PokeVial Cost Per Use"),
       0, 10000, 100,
       proc { ModSettingsMenu.get(:economymod_pokevial_cost) || 500 },
@@ -2741,7 +2741,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Nature Change Price
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Nature Change Price"),
       0, 10000, 100,
       proc { ModSettingsMenu.get(:economymod_nature_change_price) || 500 },
@@ -2750,7 +2750,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Reset EVs Price
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Reset EVs Price"),
       0, 10000, 100,
       proc { ModSettingsMenu.get(:economymod_reset_evs_price) || 1000 },
@@ -2759,7 +2759,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Insta-Hatch Price
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Insta-Hatch Price"),
       0, 10000, 100,
       proc { ModSettingsMenu.get(:economymod_insta_hatch_price) || 1000 },
@@ -2768,7 +2768,7 @@ class EconomyModScene < PokemonOption_Scene
     )
     
     # Friendship Boost Price
-    options << SliderOption.new(
+    options << StoneSliderOption.new(
       _INTL("Friendship Boost Price"),
       0, 10000, 100,
       proc { ModSettingsMenu.get(:economymod_friendship_boost_price) || 5000 },
@@ -2875,11 +2875,11 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: 'Economy Mod',
     file: '02_EconomyMod.rb',
-    version: '1.8.1',
+    version: '1.8.2',
     download_url: 'https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/02_EconomyMod.rb',
     changelog_url: 'https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Economy%20Mod.md',
     graphics: [],
-    dependencies: [{name: '01_Mod_Settings', version: '3.1.3'}]
+    dependencies: [{name: '01_Mod_Settings', version: '3.1.4'}]
   )
   
   # Log initialization with version from registration

@@ -11,7 +11,7 @@ Stone's Kuray Shop - Changelog
 [CHANGED]
 - Moved Streamer's Dream item pricing out of base PRICES since it's handled in the Streamer's Dream section.
 - Updated all debug logs to use consistent "StonesKurayShop:" prefix
-- Standardized version format to semantic versioning (1.1.0)
+- Updated version format to handle new registration.
 
 [FIXED]
 - Improved error handling for price calculations and display stock building

@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.1.3
+**Script Version:** 3.1.4
 **Author:** Stonewall
 ---
 
@@ -216,6 +216,8 @@ ModSettingsMenu.register(:encounter_rate, {
   category: "Encounters"
 })
 ```
+
+**Note:** The `register_slider` helper automatically uses `StoneSliderOption` which supports negative value ranges and provides consistent rendering across all menus. For direct scene usage, see Advanced Usage section.
 
 ### 5. Button
 Clickable button that executes code
@@ -737,6 +739,77 @@ end
 - `include ModSettingsSpacing`: Access to `auto_insert_spacers` method  
 - `auto_insert_spacers(options)`: Automatic spacing for 4+ option dropdowns
 - Compatible with existing code - no conflicts with original game scenes
+
+### StoneSliderOption for Custom Scenes
+
+For direct scene usage, `StoneSliderOption` provides enhanced slider support with negative value ranges and consistent rendering. The `register_slider` helper uses this automatically.
+
+**Features:**
+- Supports negative value ranges (e.g., -10 to 100)
+- Fixed 108px bar width with 10px right offset
+- Percentage-based tick positioning for accurate visualization
+- Works with actual values (not offsets like base SliderOption)
+
+**Class Definition:**
+```ruby
+class StoneSliderOption < Option
+  include PropertyMixin
+  attr_reader :name, :optstart, :optend
+  
+  def initialize(name, optstart, optend, optinterval, getProc, setProc, description = "")
+    super(description)
+    @name, @optstart, @optend, @optinterval = name, optstart, optend, optinterval
+    @getProc, @setProc = getProc, setProc
+  end
+  
+  def next(current)
+    current += @optinterval
+    current = @optend if current > @optend
+    return current
+  end
+  
+  def prev(current)
+    current -= @optinterval
+    current = @optstart if current < @optstart
+    return current
+  end
+  
+  def values
+    result = []
+    val = @optstart
+    while val <= @optend
+      result.push(val.to_s)
+      val += @optinterval
+    end
+    return result
+  end
+end
+```
+
+**Usage Example:**
+```ruby
+def pbGetOptions(inloadscreen = false)
+  options = []
+  
+  # Negative value range slider
+  options << StoneSliderOption.new(
+    _INTL("Level Offset"),
+    -10,          # min (supports negatives)
+    20,           # max
+    1,            # interval
+    proc { ModSettingsMenu.get(:level_offset) || 0 },
+    proc { |value| ModSettingsMenu.set(:level_offset, value) },
+    _INTL("Adjust levels by this offset")
+  )
+  
+  return options
+end
+```
+
+**When to Use:**
+- ✅ For custom scenes with sliders (direct implementation)
+- ✅ When you need negative value ranges
+- ❌ For registration API (use `type: :slider` instead - uses StoneSliderOption automatically)
 
 ### Search Functionality
 Press **Left Control** in the Mod Settings menu to search settings by name or description. Press again to clear search.
