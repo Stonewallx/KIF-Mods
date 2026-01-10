@@ -914,6 +914,9 @@ The update checker will detect and display your mod in three ways:
 
 To enable auto-updates for your mod, add a self-registration block at the **end of your mod file**:
 
+**Registration Template (Copy & Paste):**
+Replace the placeholder values below with your mod's information:
+
 ```ruby
 # ============================================================================
 # AUTO-UPDATE SELF-REGISTRATION
@@ -922,14 +925,23 @@ To enable auto-updates for your mod, add a self-registration block at the **end 
 # ============================================================================
 if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
-    name: "My Mod Name",
-    file: "MyModName.rb",
-    version: "1.0.0",
-    download_url: "https://raw.githubusercontent.com/user/repo/main/Mods/MyModName.rb",
-    changelog_url: "https://raw.githubusercontent.com/user/repo/main/Changelogs/MyModName.md",
-    graphics: [],
-    dependencies: []
+    name: "Your Mod Name",           # Display name (e.g., "Economy Mod")
+    file: "YourModFile.rb",          # Filename (e.g., "02_EconomyMod.rb")
+    version: "X.Y.Z",                # Current version (e.g., "1.0.0")
+    download_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/YourModFile.rb",
+    changelog_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/Changelog.md",
+    graphics: [],                    # Optional: [{url: "https://...", path: "Graphics/Pictures/file.png"}]
+    dependencies: []                 # Optional: [{name: "Other Mod", version: "1.0.0"}]
   )
+  
+  # Log initialization with version from registration
+  begin
+    version = ModSettingsMenu::ModRegistry.all["YourModFile.rb"][:version] rescue nil
+    version_str = version ? "v#{version}" : "(version unknown)"
+    ModSettingsMenu.debug_log("YourModPrefix: Your Mod Name #{version_str} loaded successfully")
+  rescue
+    # Silently fail if we can't log
+  end
 end
 ```
 
