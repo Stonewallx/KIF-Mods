@@ -493,8 +493,8 @@ if defined?(ModSettingsMenu) && defined?(ModSettingsMenu::ModRegistry)
     name: "Private Kuray Shop",
     file: "03_PrivateKurayShop.rb",
     version: "1.0.0",
-    download_url: "https://raw.githubusercontent.com/your-repo/KIF-Mods/main/Private%20Mods/03_PrivateKurayShop.rb",
-    changelog_url: "https://raw.githubusercontent.com/your-repo/KIF-Mods/main/Changelogs/Private%20Kuray%20Shop.md",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/03_PrivateKurayShop.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Stone's%20Kuray%20Shop.md",
     graphics: [],
     dependencies: [
       { file: "01_Mod_Settings.rb", version: "3.1.3" }
