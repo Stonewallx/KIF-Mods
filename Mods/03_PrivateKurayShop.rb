@@ -1,32 +1,33 @@
 #========================================
-# Stone's Kuray Shop
+# Private Kuray Shop
 # PIF Version: 6.4.5
-# KIF Version: 0.20.7
-# Script Version: 1.1.0
-# Author: Stonewall
+# KIF Version: 0.20.6
+# Script Version: 1.0.0
 #========================================
 
 module KurayShopMod
   #-----------------------------------------------------------------------
-  # SHOP ITEM ORDER
-  # Add Item IDs here for them to appear in the Kuray Shop in the order listed.
-  # I only added categories for organization, feel free to add, remove, rename or rearrange the categories.
+  # SHOP ORDER - Order of items in Kuray Shop
   #-----------------------------------------------------------------------
   ITEMS = [
-    "ITEMS",
-    3, 568, 569, 570, 68, 121, 122, 123, 124, 125, 126, 115, 116, 100, 194,
+    "NUZLOCKE ITEMS",
+    263, 235, 3, 522, 581,
+    598, # Ability Capsule
     "MEDICINE",
-    235, 263, 245, 246, 247, 248, 249, 250,
+    237, 239, 240, # HP Healing Items
+    228, # Status Healing Items
+    245, 246, 247, 248, 249, 250, # PP Restoring Items
     "POKEBALLS",
-    264, 623,
+    267, 624, 279,
+    "EVOLUTION ITEMS",
+    12, 13, 14, 15, 16, 17, 18, 19, 20, 211, 601, 609, 210, 660, 207, 208,
+    "ITEMS",
+    569, 570, 68, 121, 122, 123, 124, 125, 126, 115, 116, 100, 194,
     "TMs & HMs",
-    303, 314, 329, 335, 343, 345, 346, 356,
-    358, 367, 371, 618, 619, 646, 647, 648,
-    649, 650, 651, 652, 653, 654, 655, 656,
-    657,
     "BERRIES",
     "BATTLE ITEMS",
     "KEY ITEMS",
+    509, 599,
     "KURAY EGGS",
     2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
     2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021,
@@ -35,17 +36,34 @@ module KurayShopMod
 
   #-----------------------------------------------------------------------
   # ITEM PRICES
-  # Set prices below for items in the shop. Must have Item IDs listed in the ITEMS array above to appear in the shop.
   # Format is: ItemID => [BuyPrice, SellPrice]
-  # Comments added so you know which item corresponds to which ID.
   #-----------------------------------------------------------------------
   PRICES = {
     #--------- ITEMS ---------
-    # 3 => [700, 350], # Max Repel
-    # 570 => [6900, 3450], # Transgender Stone
-    # 568 => [999999, 24000], # Mist Stone
-    # 569 => [8200, 4100], # Devolution Spray
+    3 => [750, 350], # Max Repel
+    570 => [6900, 3450], # Transgender Stone
+    569 => [8200, 4100], # Devolution Spray
     68 => [4000, 2000], # Eviolite
+    509 => [1, 1], # PokeRadar
+    522 => [200, 100], # DNA Splicers
+    581 => [200, 100], # DNA Reversers
+    12 => [3000, 1500], # Fire Stone
+    13 => [3000, 1500], # Thunder Stone
+    14 => [3000, 1500], # Water Stone
+    15 => [3000, 1500], # Leaf Stone
+    16 => [3000, 1500], # Moon Stone
+    17 => [3000, 1500], # Sun Stone
+    18 => [3000, 1500], # Dusk Stone
+    19 => [3000, 1500], # Dawn Stone
+    20 => [3000, 1500], # Shiny Stone
+    211 => [3000, 1500], # Oval Stone
+    601 => [3000, 1500], # Ice Stone
+    609 => [3000, 1500], # Magnet Stone
+    210 => [3000, 1500], # Prism Scale
+    660 => [3000, 1500], # Linking Cord
+    207 => [3000, 1500], # Electrizir
+    208 => [3000, 1500], # Magmarizir
+    598 => [1, 1], # Ability Capsule
     # 604 => [9100, 4550], # Secret Capsule
     121 => [3000, 1500], # Power Weight
     122 => [3000, 1500], # Power Bracer
@@ -59,47 +77,56 @@ module KurayShopMod
     100 => [6000, 3000], # Life Orb
     194 => [10000, 1000], # Deep Sea Scale
     #--------- MEDICINE ---------
-    # 235 => [10000, 0], # Rage Candy Bar
-    # 263 => [10000, 0], # Rare Candy
+    235 => [10000, 0], # Rage Candy Bar
+    263 => [10000, 0], # Rare Candy
     245 => [1200, 600], # Ether
     246 => [3600, 1800], # Ether Max
     247 => [4000, 2000], # Elixir
     248 => [12000, 6000], # Elixir Max
-    249 => [9100, 4550], # PPUP
-    250 => [29120, 14560], # PPMAX
+    249 => [5000, 2500], # PPUP
+    250 => [15000, 7500], # PPMAX
+    237 => [1000, 500], # Fresh Water
+    239 => [1700, 850], # Lemonade
+    240 => [2300, 1150], # MooMoo Milk
+    228 => [1500, 750], # Full Heal
     #--------- POKEBALLS ---------
     # 264 => [960000, 0], # Master Ball
-    623 => [1500, 750], # Rocket Ball
+    # 623 => [1500, 750], # Rocket Ball
+    267 => [100, 50], # Poke Ball
+    624 => [500, 250], # Fusion Ball
+    279 => [600, 300], # Quick Ball
     #--------- TMs & HMs ---------
-    303 => [10000, 5000], # Light Screen
-    314 => [10000, 5000], # Return
-    329 => [10000, 5000], # Facade
-    335 => [10000, 5000], # Round
-    343 => [10000, 5000], # Fling
-    345 => [10000, 5000], # Sky Drop
-    346 => [10000, 5000], # Incinerate
-    356 => [10000, 5000], # Rock Polish
-    358 => [10000, 5000], # Stone Edge
-    367 => [10000, 5000], # Rock Throw
-    618 => [30000, 15000], # Spore
-    619 => [30000, 15000], # Toxic Spikes
-    646 => [30000, 15000], # Brutal Swing
-    647 => [30000, 15000], # Aurora Veil
-    648 => [30000, 15000], # Dazzling Gleam
-    649 => [30000, 15000], # Focus Punch
-    650 => [30000, 15000], # Infestation
-    651 => [30000, 15000], # Leech Life
-    652 => [30000, 15000], # Power Up Punch
-    653 => [30000, 15000], # Shock Wave
-    654 => [30000, 15000], # Smart Strike
-    655 => [30000, 15000], # Steel Wing
-    656 => [30000, 15000], # Stomping Tantrum
-    657 => [30000, 15000], # Throat Chop
+    # 530 => [1, 1], # HM Teleport  
+    # 371 => [10000, 5000], # TM Poison Jab
+    # 303 => [10000, 5000], # Light Screen
+    # 314 => [10000, 5000], # Return
+    # 329 => [10000, 5000], # Facade
+    # 335 => [10000, 5000], # Round
+    # 343 => [10000, 5000], # Fling
+    # 345 => [10000, 5000], # Sky Drop
+    # 346 => [10000, 5000], # Incinerate
+    # 356 => [10000, 5000], # Rock Polish
+    # 358 => [10000, 5000], # Stone Edge
+    # 367 => [10000, 5000], # Rock Throw
+    # 618 => [30000, 15000], # Spore
+    # 619 => [30000, 15000], # Toxic Spikes
+    # 646 => [30000, 15000], # Brutal Swing
+    # 647 => [30000, 15000], # Aurora Veil
+    # 648 => [30000, 15000], # Dazzling Gleam
+    # 649 => [30000, 15000], # Focus Punch
+    # 650 => [30000, 15000], # Infestation
+    # 651 => [30000, 15000], # Leech Life
+    # 652 => [30000, 15000], # Power Up Punch
+    # 653 => [30000, 15000], # Shock Wave
+    # 654 => [30000, 15000], # Smart Strike
+    # 655 => [30000, 15000], # Steel Wing
+    # 656 => [30000, 15000], # Stomping Tantrum
+    # 657 => [30000, 15000], # Throat Chop
     # 659 => [30000, 15000], # Scald
     #--------- BERRIES ---------
     #--------- BATTLE ITEMS ---------
     #--------- KEY ITEMS ---------
-    # 599 => [1, 1] # Magic Boots
+    599 => [1, 1] # Magic Boots
   }
 
   #-----------------------------------------------------------------------
@@ -119,40 +146,40 @@ module KurayShopMod
           mart_prices[264] = [960000, 0] if ITEMS.include?(264) # Master Ball
           mart_prices[568] = [999999, 24000] if ITEMS.include?(568) # Mist Stone
           mart_prices[569] = [8200, 4100] if ITEMS.include?(569) # Devolution Spray
-          mart_prices[3] = [700, 350] if ITEMS.include?(3) # Max Repel
+          mart_prices[3] = [750, 350] if ITEMS.include?(3) # Max Repel
         else
           # Prices if Streamer's dream is active
-          # Code[ItemID] = [-1, 0] if ITEMS.include?(ItemID)
-          mart_prices[235] = [-1, 0] if ITEMS.include?(235) # Rage Candy Bar
-          mart_prices[263] = [-1, 0] if ITEMS.include?(263) # Rare Candy
-          mart_prices[570] = [-1, 0] if ITEMS.include?(570) # Transgender  Stone
-          mart_prices[264] = [-1, 0] if ITEMS.include?(264) # Master Ball
-          mart_prices[568] = [-1, 0] if ITEMS.include?(568) # Mist Stone
-          mart_prices[569] = [-1, 0] if ITEMS.include?(569) # Devolution Spray
-          mart_prices[3] = [-1, 0] if ITEMS.include?(3) # Max Repel
-        end
+        # Code[ItemID] = [-1, 0] if ITEMS.include?(ItemID)
+        mart_prices[235] = [-1, 0] if ITEMS.include?(235) # Rage Candy Bar
+        mart_prices[263] = [-1, 0] if ITEMS.include?(263) # Rare Candy
+        mart_prices[570] = [-1, 0] if ITEMS.include?(570) # Transgender  Stone
+        mart_prices[264] = [-1, 0] if ITEMS.include?(264) # Master Ball
+        mart_prices[568] = [-1, 0] if ITEMS.include?(568) # Mist Stone
+        mart_prices[569] = [-1, 0] if ITEMS.include?(569) # Devolution Spray
+        mart_prices[3] = [-1, 0] if ITEMS.include?(3) # Max Repel
       end
+    end
 
 
-      for i in 2000..2032
-        next unless ITEMS.include?(i)
-        if defined?($PokemonSystem) && $PokemonSystem.respond_to?(:kuraystreamerdream) && $PokemonSystem.kuraystreamerdream != 0
-          mart_prices[i] = [-1, 0]
-        else
-          if defined?($KURAYEGGS_BASEPRICE) && $KURAYEGGS_BASEPRICE[i - 2000]
-            base = $KURAYEGGS_BASEPRICE[i - 2000]
-            sell = (base / 2.0).round
-            mart_prices[i] = [base, sell]
-          end
+    for i in 2000..2032
+      next unless ITEMS.include?(i)
+      if defined?($PokemonSystem) && $PokemonSystem.respond_to?(:kuraystreamerdream) && $PokemonSystem.kuraystreamerdream != 0
+        mart_prices[i] = [-1, 0]
+      else
+        if defined?($KURAYEGGS_BASEPRICE) && $KURAYEGGS_BASEPRICE[i - 2000]
+          base = $KURAYEGGS_BASEPRICE[i - 2000]
+          sell = (base / 2.0).round
+          mart_prices[i] = [base, sell]
         end
       end
+    end
       
       if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:debug_log)
-        ModSettingsMenu.debug_log("StonesKurayShop: Applied Streamer's Dream and Kuray Eggs pricing")
+        ModSettingsMenu.debug_log("PrivateKurayShop: Applied Streamer's Dream and Kuray Eggs pricing")
       end
     rescue => e
       if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:debug_log)
-        ModSettingsMenu.debug_log("StonesKurayShop: Error applying pricing: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("PrivateKurayShop: Error applying pricing: #{e.class} - #{e.message}")
       end
       return nil
     end
@@ -172,7 +199,7 @@ module KurayShopMod
       return selling ? price_data[1] : price_data[0]
     rescue => e
       if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:debug_log)
-        ModSettingsMenu.debug_log("StonesKurayShop: Error getting price for item #{item_id}: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("PrivateKurayShop: Error getting price for item #{item_id}: #{e.class} - #{e.message}")
       end
       return nil
     end
@@ -215,12 +242,12 @@ module KurayShopMod
       end
       
       if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:debug_log)
-        ModSettingsMenu.debug_log("StonesKurayShop: Built display stock with #{display.length} items")
+        ModSettingsMenu.debug_log("PrivateKurayShop: Built display stock with #{display.length} items")
       end
       return display
     rescue => e
       if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:debug_log)
-        ModSettingsMenu.debug_log("StonesKurayShop: Error building display stock: #{e.class} - #{e.message}")
+        ModSettingsMenu.debug_log("PrivateKurayShop: Error building display stock: #{e.class} - #{e.message}")
       end
       return []
     end
@@ -389,7 +416,8 @@ class PokemonMart_Scene
           pbPlayCloseMenuSE
           return nil
         elsif Input.trigger?(Input::USE)
-          raw2 = itemwindow.instance_variable_get(:@stock)[itemwindow.index] rescue nil
+          stock_arr = itemwindow.instance_variable_get(:@stock) rescue nil
+          raw2 = stock_arr ? (stock_arr[itemwindow.index] rescue nil) : nil
           if raw2.is_a?(Hash) && raw2[:header]
             pbPlayCancelSE
             next
@@ -462,11 +490,11 @@ end
 #===============================================================================
 if defined?(ModSettingsMenu) && defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
-    name: "Stone's Kuray Shop",
-    file: "03_StonesKurayShop.rb",
-    version: "1.1.0",
-    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/03_StonesKurayShop.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Stone's%20Kuray%20Shop.md",
+    name: "Private Kuray Shop",
+    file: "03_PrivateKurayShop.rb",
+    version: "1.0.0",
+    download_url: "https://raw.githubusercontent.com/your-repo/KIF-Mods/main/Private%20Mods/03_PrivateKurayShop.rb",
+    changelog_url: "https://raw.githubusercontent.com/your-repo/KIF-Mods/main/Changelogs/Private%20Kuray%20Shop.md",
     graphics: [],
     dependencies: [
       { file: "01_Mod_Settings.rb", version: "3.1.3" }
@@ -474,9 +502,9 @@ if defined?(ModSettingsMenu) && defined?(ModSettingsMenu::ModRegistry)
   )
   
   begin
-    version = ModSettingsMenu::ModRegistry.all["03_StonesKurayShop.rb"][:version] rescue nil
+    version = ModSettingsMenu::ModRegistry.all["03_PrivateKurayShop.rb"][:version] rescue nil
     version_str = version ? "v#{version}" : "(version unknown)"
-    ModSettingsMenu.debug_log("StonesKurayShop: Stone's Kuray Shop #{version_str} loaded successfully")
+    ModSettingsMenu.debug_log("PrivateKurayShop: Private Kuray Shop #{version_str} loaded successfully")
   rescue
     # Silently fail if we can't log
   end
