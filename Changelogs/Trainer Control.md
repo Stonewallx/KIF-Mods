@@ -1,9 +1,8 @@
 Trainer Control - Changelog
-
 # Version 2.0.0 (January 10, 2026)
 ---------------------------
 [NEW]
-- Added Auto-Update support via ModRegistry self-registration
+- Added Auto-Update support via Mod Settings self-registration
 - Added improved error handling.
 - Added documentation to the discord for the mod.
 
