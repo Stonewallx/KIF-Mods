@@ -1,5 +1,5 @@
 Autosort Bag - Changelog
-# Version 2.0.0 (January 10, 2026) - UNRELEASED
+# Version 2.0.0 (January 11, 2026)
 ---------------------------
 [NEW]
 - Added Auto-Update Self-Registration for automatic update notifications.
