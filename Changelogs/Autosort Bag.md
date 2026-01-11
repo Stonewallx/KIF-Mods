@@ -8,12 +8,12 @@ Autosort Bag - Changelog
 - Menu Modernization: Updated main menu and per-pocket settings to use modern UI components.
 - Enhanced UI with smooth transitions and optimized spacing.
 - Improved categorization under "Quality of Life" with comprehensive searchable keywords.
-- Updated the debug logging
+- Updated the debug logging to use AutosortBag prefix.
 
 [FIXED]
 - Fixed stack overflow issues with class variable usage.
 
-# Version 1.5.0 (Previous Release)
+# Version 1.5.0
 ---------------------------
 [NEW]
 - Advanced list editor with pick/move functionality.
