@@ -16,8 +16,6 @@ Trainer Control - Changelog
 [REMOVED]
 - Removed "Debug Messages" toggle from menu
 
----
-
 # Version 1.3.0
 ---------------------------
 [NEW]
