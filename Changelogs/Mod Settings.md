@@ -1,4 +1,24 @@
 Mod Settings - Changelog
+# Version 3.2.4 (January 11, 2026)
+---------------------------
+[NEW]
+- Added ZIP file extraction support for auto-update system using 7z.exe.
+-- Graphics and mod files can now be distributed as ZIP archives for easier packaging.
+- All ZIP extractions are now security validated before processing.
+- ZIP files extract to base game directory automatically.
+- Added zip extract information to the documentation.
+- Added simple restart notification system: Shows "Mods updated! Restart Needed" in Mod List when updates complete and a restart has not been made.
+
+[SECURITY]
+- Allowed file types: .rb, .png, .gif, .jpg, .jpeg, .bmp, .wav, .ogg, .mp3, .mid, .txt, .md, .json, .yml, .rxdata, .rvdata, .rvdata2.
+- Allowed extraction zones: Graphics/, Audio/, Mods/, Fonts/. 
+- Files outside allowed zones or with unsafe extensions are automatically rejected and removed.
+
+[FIXED]
+- Fixed Auto-Update not properly proccing the update all message and not cleaning up the scene properly. - Not sure when I broke it tbh, my bad!
+- Fixed dependency display showing empty dashes when mod requirements are missing.
+- Dependency version requirements now show both required and installed versions when version mismatch occurs.
+
 # Version 3.1.4 (January 10, 2026)
 ---------------------------
 [NEW]

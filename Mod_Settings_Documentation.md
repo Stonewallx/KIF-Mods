@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.1.4
+**Script Version:** 3.2.4
 **Author:** Stonewall
 ---
 
@@ -1030,10 +1030,36 @@ end
 - `name` (required): Display name shown in the update menu
 - `file` (required): Exact filename including .rb extension
 - `version` (required): Semantic version string (X.Y.Z)
-- `download_url` (required): Direct URL to download the .rb file for auto-updates
+- `download_url` (required): Direct URL to download the .rb file (or .zip) for auto-updates
 - `changelog_url` (optional): URL to changelog file (markdown or text)
-- `graphics` (optional): Array of graphics files with download URL and game path
+- `graphics` (optional): Array of graphics files with download URL and game path (supports individual files or .zip archives)
 - `dependencies` (optional): Array of required mods with minimum versions
+
+**ZIP File Support:**
+Both `download_url` and `graphics` entries support ZIP files for easier packaging:
+
+```ruby
+# Example 1: Mod distributed as ZIP
+download_url: "https://github.com/user/repo/releases/download/v1.0/MyMod.zip"
+# ZIP will extract to base game folder, must contain proper structure (e.g., Mods/MyMod.rb)
+
+# Example 2: Graphics as ZIP
+graphics: [
+  {
+    url: "https://github.com/user/repo/releases/download/v1.0/Graphics.zip",
+    path: "Graphics/Characters/"  # Ignored for ZIPs - extracts to base folder
+  }
+]
+# ZIP structure should include full paths (e.g., Graphics/Characters/sprite.png)
+```
+
+**ZIP Security:**
+- All ZIP files are validated before extraction
+- Path traversal attacks (../) are blocked
+- Only allowed file types: .rb, .png, .gif, .jpg, .jpeg, .bmp, .wav, .ogg, .mp3, .mid, .txt, .md, .json, .yml, .rxdata, .rvdata, .rvdata2
+- Only allowed directories: Graphics/, Audio/, Mods/, Data/, Fonts/, PBS/, Plugins/
+- Files outside allowed zones or with unsafe extensions are automatically rejected
+- Uses 7z.exe from BaseDir\REQUIRED_BY_INSTALLER_UPDATER folder
 
 **Priority System:**
 If a mod has both a self-registration block and a version header, the **registration takes priority**. The mod will appear in update categories (Up to Date, Updates Available, etc.) using the registration version, and the version header is ignored.

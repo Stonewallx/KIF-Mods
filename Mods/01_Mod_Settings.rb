@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.1.4
+# Script Version: 3.2.4
 # Author: Stonewall
 #========================================
 #
@@ -2027,14 +2027,27 @@ class UpdateResultsScene < PokemonOption_Scene
       local_mods = ModSettingsMenu::VersionCheck.collect
       
       mod[:dependencies].each do |dep|
-        dep_name = dep.is_a?(Hash) ? dep["name"] : dep
-        dep_version = dep.is_a?(Hash) ? dep["version"] : nil
+        # Handle both string and symbol keys
+        dep_name = dep.is_a?(Hash) ? (dep[:name] || dep["name"]) : dep
+        dep_version = dep.is_a?(Hash) ? (dep[:version] || dep["version"]) : nil
         
         # Check if dependency is installed
         installed = local_mods.find { |m| m[:name] == dep_name }
         
         if installed.nil?
-          missing_deps << dep_name
+          # Dependency not found - look up display name from registry or use file name
+          display_name = nil
+          if defined?(ModSettingsMenu::ModRegistry)
+            registry_entry = ModSettingsMenu::ModRegistry.all[dep_name]
+            display_name = registry_entry[:display_name] if registry_entry
+          end
+          display_name ||= dep_name
+          
+          if dep_version
+            missing_deps << "#{display_name}: #{dep_version}"
+          else
+            missing_deps << display_name
+          end
         elsif dep_version
           # Check if version requirement is met
           installed_parsed = ModSettingsMenu::UpdateCheck.parse_version(installed[:version])
@@ -2047,7 +2060,9 @@ class UpdateResultsScene < PokemonOption_Scene
           if inst_ver[0] < req_ver[0] || 
              (inst_ver[0] == req_ver[0] && inst_ver[1] < req_ver[1]) ||
              (inst_ver[0] == req_ver[0] && inst_ver[1] == req_ver[1] && inst_ver[2] < req_ver[2])
-            missing_deps << "#{dep_name} (requires v#{dep_version}, have v#{installed[:version]})"
+            # Use the display name from the installed mod's registration
+            display = installed[:display_name] || installed[:name]
+            missing_deps << "#{display}: #{dep_version} (have #{installed[:version]})"
           end
         end
       end
@@ -2274,6 +2289,8 @@ end
 # Shows a list of mods with updates available using the same format as Update Results
 # ============================================================================
 class AutoUpdateNotificationScene < PokemonOption_Scene
+  attr_accessor :confirmed
+  
   # Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
   def pbFadeInAndShow(sprites, visiblesprites = nil)
     if visiblesprites
@@ -2283,9 +2300,11 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
     end
   end
   
-  def initialize(updates_available)
+  def initialize(updates_available, skip_confirm)
     super()
     @updates_available = updates_available
+    @skip_confirm = skip_confirm
+    @confirmed = false
   end
   
   def initOptionsWindow
@@ -2300,6 +2319,9 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
   
   def pbGetOptions(inloadscreen = false)
     options = []
+    
+    # Add column header at the very top
+    options << ColumnHeaderOption.new
     
     # Organize mods by update severity
     major_updates = []
@@ -2332,7 +2354,7 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Major Updates Available", "Major version (X) behind latest", :red)
       options << header
       major_updates.each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         opt = ButtonOption.new(text, proc {}, " ")
         options << opt
       end
@@ -2343,7 +2365,7 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Minor Updates Available", "Minor version (Y) behind latest", :orange)
       options << header
       minor_updates.each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         opt = ButtonOption.new(text, proc {}, " ")
         options << opt
       end
@@ -2354,7 +2376,7 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
       header = ColoredCategoryHeaderOption.new("Hotfixes Available", "Hotfix version (Z) behind latest", :yellow)
       options << header
       hotfixes.each do |mod|
-        text = sprintf("%s: %s => %s", mod[:name], mod[:local], mod[:online])
+        text = sprintf("%s|%s|%s", mod[:name], mod[:local], mod[:online])
         opt = ButtonOption.new(text, proc {}, " ")
         options << opt
       end
@@ -2370,11 +2392,6 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
     @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
       _INTL("Auto-Update"), 0, 0, Graphics.width, 64, @viewport)
     
-    # Set custom textbox message
-    if @sprites["textbox"]
-      @sprites["textbox"].text = _INTL("Press A to continue")
-    end
-    
     # Apply menu colors
     if @sprites["option"] && @sprites["option"].respond_to?(:use_color_theme=)
       @sprites["option"].use_color_theme = true
@@ -2389,19 +2406,30 @@ class AutoUpdateNotificationScene < PokemonOption_Scene
     pbFadeInAndShow(@sprites) { pbUpdate }
   end
   
-  def self.show_and_confirm(updates_available, skip_confirm = false)
-    # Show the scene
-    scene = AutoUpdateNotificationScene.new(updates_available)
-    screen = PokemonOptionScreen.new(scene)
-    screen.pbStartScreen
-    
-    # Ask for confirmation (unless disabled)
-    if skip_confirm
-      return true
+  # Override to handle confirm button press
+  def pbEndScene
+    # Ask for confirmation when closing (unless disabled)
+    if @skip_confirm
+      @confirmed = true
     else
-      count = updates_available.length
-      return pbConfirmMessage(_INTL("Would you like to update all {1} mod(s)?", count))
+      count = @updates_available.length
+      @confirmed = pbConfirmMessage(_INTL("Would you like to update all {1} mod(s)?", count))
     end
+    
+    super
+  end
+  
+  def self.show_and_confirm(updates_available, skip_confirm = false)
+    # Show the scene in a fade to properly handle graphics
+    scene = nil
+    pbFadeOutIn {
+      scene = AutoUpdateNotificationScene.new(updates_available, skip_confirm)
+      screen = PokemonOptionScreen.new(scene)
+      screen.pbStartScreen
+    }
+    
+    # Return the user's confirmation decision
+    return scene.confirmed
   end
 end
 
@@ -4365,28 +4393,252 @@ module ModSettingsMenu
       end
     end
     
+    # Check if URL points to a ZIP file
+    # @param url [String] URL to check
+    # @return [Boolean] True if URL ends with .zip
+    def self.is_zip_url?(url)
+      return false if url.nil? || url.empty?
+      url.downcase.end_with?(".zip")
+    end
+    
+    # Validate file extension against whitelist
+    # @param filename [String] File name to check
+    # @return [Boolean] True if extension is allowed
+    def self.is_safe_extension?(filename)
+      allowed_extensions = [
+        ".rb", ".png", ".gif", ".jpg", ".jpeg", ".bmp",
+        ".wav", ".ogg", ".mp3", ".mid", ".midi",
+        ".txt", ".md", ".json", ".yml", ".yaml",
+        ".rxdata", ".rvdata", ".rvdata2"
+      ]
+      ext = File.extname(filename).downcase
+      return allowed_extensions.include?(ext)
+    end
+    
+    # Validate file path is within allowed zones
+    # @param path [String] Relative path to check
+    # @return [Boolean] True if path is in allowed zone
+    def self.is_safe_zone?(path)
+      allowed_zones = [
+        "Graphics/", "Audio/", "Mods/",
+        "Fonts/"
+      ]
+      normalized = path.gsub("\\", "/")
+      return allowed_zones.any? { |zone| normalized.start_with?(zone) }
+    end
+    
+    # Validate and sanitize file path to prevent traversal attacks
+    # @param path [String] Path to validate
+    # @param base_dir [String] Base directory path
+    # @return [String, nil] Sanitized path or nil if invalid
+    def self.sanitize_zip_path(path, base_dir)
+      # Normalize path separators
+      normalized = path.gsub("\\", "/")
+      
+      # Reject absolute paths
+      if normalized.start_with?("/") || normalized.match?(/^[A-Za-z]:/)
+        ModSettingsMenu.debug_log("ModSettings: Rejected absolute path: #{path}")
+        return nil
+      end
+      
+      # Reject path traversal attempts
+      if normalized.include?("../") || normalized.include?("..\\")
+        ModSettingsMenu.debug_log("ModSettings: Rejected path traversal: #{path}")
+        return nil
+      end
+      
+      # Check file extension whitelist
+      unless is_safe_extension?(normalized)
+        ModSettingsMenu.debug_log("ModSettings: Rejected unsafe extension: #{path}")
+        return nil
+      end
+      
+      # Check if in allowed zone
+      unless is_safe_zone?(normalized)
+        ModSettingsMenu.debug_log("ModSettings: Rejected path outside safe zones: #{path}")
+        return nil
+      end
+      
+      # Build full path and verify it's within base directory
+      full_path = File.expand_path(File.join(base_dir, normalized))
+      base_expanded = File.expand_path(base_dir)
+      
+      unless full_path.start_with?(base_expanded)
+        ModSettingsMenu.debug_log("ModSettings: Path escapes base directory: #{path}")
+        return nil
+      end
+      
+      return normalized
+    end
+    
+    # List contents of ZIP file using 7z
+    # @param zip_path [String] Path to ZIP file
+    # @return [Array<String>, nil] Array of file paths or nil on error
+    def self.list_zip_contents(zip_path)
+      begin
+        sevenz_path = File.join(get_base_dir, "REQUIRED_BY_INSTALLER_UPDATER", "7z.exe")
+        unless File.exist?(sevenz_path)
+          return nil
+        end
+        
+        # Use 7z list command
+        command = "\"#{sevenz_path}\" l -slt \"#{zip_path}\""
+        output = `#{command}`
+        
+        files = []
+        output.scan(/^Path = (.+)$/) do |match|
+          path = match[0].strip
+          # Skip the archive itself
+          files << path unless path == zip_path || path.empty?
+        end
+        
+        return files
+      rescue => e
+        ModSettingsMenu.debug_log("ModSettings: Error listing ZIP contents: #{e.message}")
+        return nil
+      end
+    end
+    
+    # Extract ZIP file using 7z.exe with security validation
+    # @param zip_path [String] Path to ZIP file
+    # @param destination [String] Destination directory (defaults to base game folder)
+    # @return [Boolean] True on success, false on failure
+    def self.extract_zip(zip_path, destination = nil)
+      begin
+        # Default to base game directory
+        destination ||= get_base_dir
+        
+        # Check if 7z.exe exists
+        sevenz_path = File.join(get_base_dir, "REQUIRED_BY_INSTALLER_UPDATER", "7z.exe")
+        unless File.exist?(sevenz_path)
+          ModSettingsMenu.debug_log("ModSettings: 7z.exe not found at #{sevenz_path}, cannot extract ZIP")
+          return false
+        end
+        
+        # List and validate ZIP contents
+        ModSettingsMenu.debug_log("ModSettings: Validating ZIP contents...")
+        contents = list_zip_contents(zip_path)
+        
+        if contents.nil?
+          ModSettingsMenu.debug_log("ModSettings: Failed to read ZIP contents")
+          return false
+        end
+        
+        # Validate each file in the ZIP
+        valid_files = []
+        rejected_files = []
+        
+        contents.each do |file_path|
+          sanitized = sanitize_zip_path(file_path, destination)
+          if sanitized
+            valid_files << file_path
+          else
+            rejected_files << file_path
+          end
+        end
+        
+        # Log results
+        ModSettingsMenu.debug_log("ModSettings: ZIP validation complete")
+        ModSettingsMenu.debug_log("ModSettings: Valid files: #{valid_files.length}")
+        ModSettingsMenu.debug_log("ModSettings: Rejected files: #{rejected_files.length}")
+        
+        if rejected_files.any?
+          ModSettingsMenu.debug_log("ModSettings: Rejected files: #{rejected_files.join(', ')}")
+        end
+        
+        if valid_files.empty?
+          ModSettingsMenu.debug_log("ModSettings: No valid files to extract")
+          return false
+        end
+        
+        # Ensure destination exists
+        Dir.mkdir(destination) unless Dir.exist?(destination)
+        
+        # Run 7z extraction
+        # -y: assume Yes on all queries
+        # -o: output directory
+        command = "\"#{sevenz_path}\" x \"#{zip_path}\" -o\"#{destination}\" -y"
+        ModSettingsMenu.debug_log("ModSettings: Extracting #{valid_files.length} files to: #{destination}")
+        
+        result = system(command)
+        
+        if result
+          # Verify no rejected files were extracted and remove them if present
+          rejected_files.each do |rejected|
+            full_path = File.join(destination, rejected)
+            if File.exist?(full_path)
+              begin
+                File.delete(full_path)
+                ModSettingsMenu.debug_log("ModSettings: Removed rejected file: #{rejected}")
+              rescue => e
+                ModSettingsMenu.debug_log("ModSettings: Failed to remove rejected file: #{rejected}")
+              end
+            end
+          end
+          
+          ModSettingsMenu.debug_log("ModSettings: ZIP extraction successful")
+          return true
+        else
+          ModSettingsMenu.debug_log("ModSettings: ZIP extraction failed")
+          return false
+        end
+      rescue => e
+        ModSettingsMenu.debug_log("ModSettings: ZIP extraction error: #{e.class} - #{e.message}")
+        return false
+      end
+    end
+    
     # Install/update a mod file
     # @param mod_path [String] Full path to local mod file
-    # @param download_url [String] URL to download new version from
+    # @param download_url [String] URL to download new version from (can be .rb or .zip)
     # @param current_version [String] Current version for backup naming
     # @param progress_callback [Proc, nil] Optional callback to report download progress
     # Returns true on success, false on failure
     def self.install_mod(mod_path, download_url, current_version, progress_callback = nil)
       begin
-        # Backup current version
-        unless backup_mod(mod_path, current_version)
-          ModSettingsMenu.debug_log("ModSettings: Warning: Backup failed, continuing anyway...")
+        # Check if this is a ZIP file
+        if is_zip_url?(download_url)
+          ModSettingsMenu.debug_log("ModSettings: Detected ZIP download for mod")
+          
+          # Download ZIP
+          content = download_file(download_url, progress_callback)
+          return false if content.nil?
+          
+          # Save to temp location
+          base_dir = get_base_dir
+          temp_zip = File.join(base_dir, "temp_mod.zip")
+          File.open(temp_zip, 'wb') { |f| f.write(content) }
+          
+          # Extract to base game folder (security validated in extract_zip)
+          success = extract_zip(temp_zip)
+          
+          # Clean up temp file
+          File.delete(temp_zip) if File.exist?(temp_zip)
+          
+          if success
+            ModSettingsMenu.debug_log("ModSettings: Successfully installed ZIP mod")
+            return true
+          else
+            ModSettingsMenu.debug_log("ModSettings: ZIP mod installation failed")
+            return false
+          end
+        else
+          # Regular .rb file download
+          # Backup current version
+          unless backup_mod(mod_path, current_version)
+            ModSettingsMenu.debug_log("ModSettings: Warning: Backup failed, continuing anyway...")
+          end
+          
+          # Download new version
+          content = download_file(download_url, progress_callback)
+          return false if content.nil?
+          
+          # Write new version to same location
+          File.open(mod_path, 'wb') { |f| f.write(content) }
+          
+          ModSettingsMenu.debug_log("ModSettings: Successfully updated: #{File.basename(mod_path)}")
+          return true
         end
-        
-        # Download new version
-        content = download_file(download_url, progress_callback)
-        return false if content.nil?
-        
-        # Write new version to same location
-        File.open(mod_path, 'wb') { |f| f.write(content) }
-        
-        ModSettingsMenu.debug_log("ModSettings: Successfully updated: #{File.basename(mod_path)}")
-        return true
       rescue => e
         ModSettingsMenu.debug_log("ModSettings: Install error: #{e.class} - #{e.message}")
         return false
@@ -4554,36 +4806,65 @@ module ModSettingsMenu
           url = graphic["url"]
           rel_path = graphic["path"]
           
-          # Download file
-          content = download_file(url)
-          if content.nil?
-            failure += 1
-            next
-          end
-          
-          # Determine full path
-          full_path = File.join(base_dir, rel_path)
-          
-          # Ensure directory exists
-          dir = File.dirname(full_path)
-          unless Dir.exist?(dir)
-            # Create directory recursively
-            parts = []
-            temp = dir
-            while temp != base_dir && !Dir.exist?(temp)
-              parts.unshift(File.basename(temp))
-              temp = File.dirname(temp)
+          # Check if this is a ZIP file
+          if is_zip_url?(url)
+            ModSettingsMenu.debug_log("ModSettings: Detected ZIP download for graphics")
+            
+            # Download ZIP
+            content = download_file(url)
+            if content.nil?
+              failure += 1
+              next
             end
-            parts.each do |part|
-              temp = File.join(temp, part)
-              Dir.mkdir(temp) unless Dir.exist?(temp)
+            
+            # Save to temp location
+            temp_zip = File.join(base_dir, "temp_graphics.zip")
+            File.open(temp_zip, 'wb') { |f| f.write(content) }
+            
+            # Extract to base game folder (security validated in extract_zip)
+            if extract_zip(temp_zip)
+              ModSettingsMenu.debug_log("ModSettings: Installed graphics ZIP")
+              success += 1
+            else
+              ModSettingsMenu.debug_log("ModSettings: Failed to extract graphics ZIP")
+              failure += 1
             end
+            
+            # Clean up temp file
+            File.delete(temp_zip) if File.exist?(temp_zip)
+          else
+            # Regular individual file download
+            # Download file
+            content = download_file(url)
+            if content.nil?
+              failure += 1
+              next
+            end
+            
+            # Determine full path
+            full_path = File.join(base_dir, rel_path)
+            
+            # Ensure directory exists
+            dir = File.dirname(full_path)
+            unless Dir.exist?(dir)
+              # Create directory recursively
+              parts = []
+              temp = dir
+              while temp != base_dir && !Dir.exist?(temp)
+                parts.unshift(File.basename(temp))
+                temp = File.dirname(temp)
+              end
+              parts.each do |part|
+                temp = File.join(temp, part)
+                Dir.mkdir(temp) unless Dir.exist?(temp)
+              end
+            end
+            
+            # Write file
+            File.open(full_path, 'wb') { |f| f.write(content) }
+            ModSettingsMenu.debug_log("ModSettings: Installed graphic: #{rel_path}")
+            success += 1
           end
-          
-          # Write file
-          File.open(full_path, 'wb') { |f| f.write(content) }
-          ModSettingsMenu.debug_log("ModSettings: Installed graphic: #{rel_path}")
-          success += 1
         rescue => e
           ModSettingsMenu.debug_log("ModSettings: Graphics install error: #{e.class} - #{e.message}")
           failure += 1
@@ -4653,33 +4934,37 @@ module ModSettingsMenu
           
           if confirmed
             debug_log("ModSettings: Auto-update: User confirmed, updating #{updatable.length} mods")
+            
+            # Perform updates in a clean screen state
             success_count = 0
             failure_count = 0
             
-            updatable.each do |mod|
-              # Update the mod
-              success = ModUpdater.install_mod(
-                mod[:path],
-                mod[:download_url],
-                mod[:local]
-              )
-              
-              if success
-                success_count += 1
-                # Install graphics if present
-                if mod[:graphics] && mod[:graphics].any?
-                  ModUpdater.install_graphics(mod[:graphics])
+            pbFadeOutIn {
+              updatable.each do |mod|
+                # Update the mod
+                success = ModUpdater.install_mod(
+                  mod[:path],
+                  mod[:download_url],
+                  mod[:local]
+                )
+                
+                if success
+                  success_count += 1
+                  # Install graphics if present
+                  if mod[:graphics] && mod[:graphics].any?
+                    ModUpdater.install_graphics(mod[:graphics])
+                  end
+                else
+                  failure_count += 1
                 end
-              else
-                failure_count += 1
               end
-            end
+            }
             
-            # Show completion message and handle restart
+            # Show completion message
             if failure_count > 0
-              pbMessage(sprintf("Updates complete! %d succeeded, %d failed.", success_count, failure_count)) if defined?(pbMessage)
+              pbMessage(sprintf("Updates complete! %d succeeded, %d failed. Please restart the game with F12 or reopen it.", success_count, failure_count)) if defined?(pbMessage)
             else
-              pbMessage(sprintf("All %d mod(s) updated successfully!", success_count)) if defined?(pbMessage)
+              pbMessage(sprintf("All %d mod(s) updated successfully! Please restart the game with F12 or reopen it.", success_count)) if defined?(pbMessage)
             end
             
             # Handle restart based on confirmation setting - TEMPORARILY DISABLED
@@ -4706,9 +4991,6 @@ module ModSettingsMenu
             #     end
             #   end
             # end
-            
-            # For now, just show completion message without restart
-            pbMessage(_INTL("Updates complete! Use F12 to restart when ready.")) if defined?(pbMessage)
           else
             debug_log("ModSettings: Auto-update: User cancelled")
           end
@@ -5399,7 +5681,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Mod Settings",
     file: "01_Mod_Settings.rb",
-    version: "3.1.4",
+    version: "3.2.4",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     graphics: [],
