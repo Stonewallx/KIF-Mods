@@ -2039,9 +2039,13 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "Follower System",
     file: "08_Follower System.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/08_Follower%20System.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/Follower%20System.md",
-    graphics: [],
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/08_Follower%20System.rb",
+    changelog_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Changelogs/Follower%20System.md",
+    graphics: [
+      {
+        url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Graphics/08_Follower%20System.zip"
+      }
+    ],
     dependencies: [
       {name: "01_Mod_Settings", version: "3.1.4"}
     ]

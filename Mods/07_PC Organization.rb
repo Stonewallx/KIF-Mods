@@ -878,8 +878,8 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "PC Organization",
     file: "07_PC Organization.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/main/Mods/07_PC%20Organization.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/main/Changelogs/PC%20Organization.md",
+    download_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Mods/07_PC%20Organization.rb",
+    changelog_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Changelogs/PC%20Organization.md",
     graphics: [],
     dependencies: [
       {name: "01_Mod_Settings", version: "3.1.4"}

@@ -2439,8 +2439,8 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "Autosort Bag",
     file: "06_AutosortBag.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/main/Mods/06_AutosortBag.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/main/Changelogs/Autosort%20Bag.md",
+    download_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Mods/06_AutosortBag.rb",
+    changelog_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Changelogs/Autosort%20Bag.md",
     graphics: [],
     dependencies: [
       {name: "01_Mod_Settings", version: "3.1.4"}
