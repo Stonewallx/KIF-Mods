@@ -1587,11 +1587,36 @@ if defined?(PokemonPartyScreen) && !PokemonPartyScreen.method_defined?(:pbPokemo
                   if cmdwindow.index < sprite_variations.length
                     pbPlayDecisionSE
                     selected = cmdwindow.index
+                    
+                    # Update command list to show selection with + symbols
+                    new_commands = []
+                    sprite_variations.each_with_index do |var_data, i|
+                      if i == selected
+                        # Add + symbols around selected variation
+                        if var_data[:display_name].empty?
+                          new_commands << "+ Fusion (Base) +"
+                        else
+                          new_commands << "+ #{var_data[:display_name].upcase} +"
+                        end
+                      else
+                        if var_data[:display_name].empty?
+                          new_commands << "Fusion (Base)"
+                        else
+                          new_commands << var_data[:display_name].upcase
+                        end
+                      end
+                    end
+                    new_commands << _INTL("Cancel")
+                    
+                    cmdwindow.commands = new_commands
+                    cmdwindow.index = selected
+                    
+                    # Keep window open to show selection - don't break yet
                   else
                     pbPlayCancelSE
                     selected = -1
+                    break
                   end
-                  break
                 end
               end
               
@@ -1602,7 +1627,6 @@ if defined?(PokemonPartyScreen) && !PokemonPartyScreen.method_defined?(:pbPokemo
                 var_data = sprite_variations[selected]
                 # Store the variation data as a hash
                 set_selected_sprite_variation(pkmnid, var_data)
-                pbDisplay(_INTL("Selected variation: {1}", var_commands[selected]))
                 
                 if defined?($Follower) && $Follower && $Follower.follower_index == pkmnid
                   create_follower(pkmnid)

@@ -5,14 +5,13 @@ Mod Settings - Changelog
 - Added ZIP file extraction support for auto-update system using 7z.exe.
 -- Graphics and mod files can now be distributed as ZIP archives for easier packaging.
 - All ZIP extractions are now security validated before processing.
-- ZIP files extract to base game directory automatically.
+- ZIP files extract to base game directory automatically, mod authors need to structure their .zips accordingly.
 - Added zip extract information to the documentation.
 - Added simple restart notification system: Shows "Mods updated! Restart Needed" in Mod List when updates complete and a restart has not been made.
 
 [SECURITY]
 - Allowed file types: .rb, .png, .gif, .jpg, .jpeg, .bmp, .wav, .ogg, .mp3, .mid, .txt, .md, .json, .yml, .rxdata, .rvdata, .rvdata2.
 - Allowed extraction zones: Graphics/, Audio/, Mods/, Fonts/. 
-- Files outside allowed zones or with unsafe extensions are automatically rejected and removed.
 
 [FIXED]
 - Fixed Auto-Update not properly proccing the update all message and not cleaning up the scene properly. - Not sure when I broke it tbh, my bad!

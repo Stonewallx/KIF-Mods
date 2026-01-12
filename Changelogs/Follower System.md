@@ -7,6 +7,9 @@
 [CHANGED]
 - Updated debug logging to use FollowerSystem prefix.
 
+[FIXED]
+- Fixed issue of Party View and Weather box showing on sprite variation selected message by removing message. Selected variation will now have +'s beside the name.
+
 # Version 1.3.0
 ---------------------------
 [FEATURES]

@@ -4322,19 +4322,42 @@ module ModSettingsMenu
         # Show initial progress
         progress_callback.call(0) if progress_callback
         
-        response = HTTPLite.get(url)
+        # Follow redirects (max 5 times)
+        max_redirects = 5
+        redirect_count = 0
+        current_url = url
         
-        # Show completion progress
-        progress_callback.call(100) if progress_callback
-        
-        if response.is_a?(Hash) && response[:status] == 200
-          content = response[:body]
-          ModSettingsMenu.debug_log("ModSettings: Download successful, size: #{content.length} bytes")
-          return content
-        else
-          status = response.is_a?(Hash) ? response[:status] : "unknown"
-          ModSettingsMenu.debug_log("ModSettings: Download failed, status: #{status}")
-          return nil
+        loop do
+          response = HTTPLite.get(current_url)
+          
+          if response.is_a?(Hash) && response[:status] == 200
+            # Success - got the content
+            progress_callback.call(100) if progress_callback
+            content = response[:body]
+            ModSettingsMenu.debug_log("ModSettings: Download successful, size: #{content.length} bytes")
+            return content
+          elsif response.is_a?(Hash) && [301, 302, 303, 307, 308].include?(response[:status])
+            # Redirect - follow the Location header
+            redirect_count += 1
+            if redirect_count > max_redirects
+              ModSettingsMenu.debug_log("ModSettings: Too many redirects (#{redirect_count})")
+              return nil
+            end
+            
+            location = response[:headers]["location"] || response[:headers]["Location"]
+            if location.nil? || location.empty?
+              ModSettingsMenu.debug_log("ModSettings: Redirect without Location header")
+              return nil
+            end
+            
+            current_url = location
+            ModSettingsMenu.debug_log("ModSettings: Following redirect to: #{current_url}")
+          else
+            # Error
+            status = response.is_a?(Hash) ? response[:status] : "unknown"
+            ModSettingsMenu.debug_log("ModSettings: Download failed, status: #{status}")
+            return nil
+          end
         end
       rescue => e
         ModSettingsMenu.debug_log("ModSettings: Download error: #{e.class} - #{e.message}")
@@ -4415,17 +4438,7 @@ module ModSettingsMenu
       return allowed_extensions.include?(ext)
     end
     
-    # Validate file path is within allowed zones
-    # @param path [String] Relative path to check
-    # @return [Boolean] True if path is in allowed zone
-    def self.is_safe_zone?(path)
-      allowed_zones = [
-        "Graphics/", "Audio/", "Mods/",
-        "Fonts/"
-      ]
-      normalized = path.gsub("\\", "/")
-      return allowed_zones.any? { |zone| normalized.start_with?(zone) }
-    end
+
     
     # Validate and sanitize file path to prevent traversal attacks
     # @param path [String] Path to validate
@@ -4453,12 +4466,6 @@ module ModSettingsMenu
         return nil
       end
       
-      # Check if in allowed zone
-      unless is_safe_zone?(normalized)
-        ModSettingsMenu.debug_log("ModSettings: Rejected path outside safe zones: #{path}")
-        return nil
-      end
-      
       # Build full path and verify it's within base directory
       full_path = File.expand_path(File.join(base_dir, normalized))
       base_expanded = File.expand_path(base_dir)
@@ -4478,23 +4485,75 @@ module ModSettingsMenu
       begin
         sevenz_path = File.join(get_base_dir, "REQUIRED_BY_INSTALLER_UPDATER", "7z.exe")
         unless File.exist?(sevenz_path)
+          ModSettingsMenu.debug_log("ModSettings: 7z.exe not found at #{sevenz_path}")
           return nil
         end
         
-        # Use 7z list command
-        command = "\"#{sevenz_path}\" l -slt \"#{zip_path}\""
-        output = `#{command}`
+        ModSettingsMenu.debug_log("ModSettings: 7z.exe found at #{sevenz_path}")
+        ModSettingsMenu.debug_log("ModSettings: ZIP path: #{zip_path}")
+        ModSettingsMenu.debug_log("ModSettings: ZIP exists: #{File.exist?(zip_path)}")
+        ModSettingsMenu.debug_log("ModSettings: ZIP size: #{File.size(zip_path)} bytes") if File.exist?(zip_path)
+        
+        # Create temp file for output
+        base_dir = get_base_dir
+        temp_output = File.join(base_dir, "temp_7z_list.txt")
+        
+        # Use 7z list command, redirect output to file
+        command = "\"#{sevenz_path}\" l -slt \"#{zip_path}\" > \"#{temp_output}\""
+        ModSettingsMenu.debug_log("ModSettings: Executing command: #{command}")
+        result = system(command)
+        
+        ModSettingsMenu.debug_log("ModSettings: 7z exit code: #{$?.exitstatus}")
+        
+        unless File.exist?(temp_output)
+          ModSettingsMenu.debug_log("ModSettings: Output file not created")
+          return nil
+        end
+        
+        # Read the output file
+        output = File.read(temp_output)
+        File.delete(temp_output) if File.exist?(temp_output)
+        
+        ModSettingsMenu.debug_log("ModSettings: 7z output length: #{output.length}")
+        
+        if output.length > 0
+          # Show first 500 characters of output for debugging
+          preview = output[0...500].gsub(/\r\n/, "\n")
+          ModSettingsMenu.debug_log("ModSettings: 7z output preview: #{preview}")
+        end
         
         files = []
-        output.scan(/^Path = (.+)$/) do |match|
-          path = match[0].strip
-          # Skip the archive itself
-          files << path unless path == zip_path || path.empty?
+        current_path = nil
+        is_directory = false
+        
+        output.each_line do |line|
+          line = line.strip
+          
+          # Look for Path line
+          if line =~ /^Path = (.+)$/
+            current_path = $1.strip
+          # Look for Folder attribute
+          elsif line =~ /^Folder = (.+)$/
+            is_directory = ($1.strip == "+")
+          # When we hit a blank line, we've finished an entry
+          elsif line.empty? && current_path
+            # Only add if it's a file (not a directory) and not the archive itself
+            unless is_directory || current_path == zip_path || current_path.empty?
+              files << current_path
+            end
+            # Reset for next entry
+            current_path = nil
+            is_directory = false
+          end
         end
+        
+        ModSettingsMenu.debug_log("ModSettings: Found #{files.length} files in ZIP")
+        files.each { |f| ModSettingsMenu.debug_log("ModSettings: ZIP file: #{f}") }
         
         return files
       rescue => e
         ModSettingsMenu.debug_log("ModSettings: Error listing ZIP contents: #{e.message}")
+        ModSettingsMenu.debug_log("ModSettings: Error backtrace: #{e.backtrace.first(3).join(', ')}")
         return nil
       end
     end
@@ -4803,8 +4862,8 @@ module ModSettingsMenu
       
       graphics_list.each do |graphic|
         begin
-          url = graphic["url"]
-          rel_path = graphic["path"]
+          url = graphic[:url] || graphic["url"]
+          rel_path = graphic[:path] || graphic["path"]
           
           # Check if this is a ZIP file
           if is_zip_url?(url)
