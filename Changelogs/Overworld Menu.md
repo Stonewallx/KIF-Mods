@@ -1,17 +1,33 @@
-Overworld Menu - Changelog
-
-# Version 1.0.1 (January 12, 2026) - UNRELEASED
+﻿Overworld Menu - Changelog
+# Version 2.0.0 (January 13, 2026) - UNRELEASED
 ---------------------------
-
-[FIXED]
-- Fixed sprite variation selection not saving when accessed through Overworld Menu.
-- Sprite variation selection now properly saves and updates when choosing variations.
+[NEW]
+- Added registration system for external mods to add submenus.
+- Added priority system for menu ordering.
+- Added auto-update Mod Settings registration.
+- Added proper category (Interface) and searchable keywords for Mod Settings.
+- Added OverworldMenuSettingsScene using modern PokemonOption_Scene pattern.
+- Added page assignment options for all registered submenus in settings.
+- Added Mod Settings submenu button to Overworld Menu at priority 100.
+- Added comprehensive debug logging with "OverworldMenu:" prefix.
+- Added automatic party view and weather box hiding when dialog boxes appear.
+- Added error wrapping for all handler executions with detailed logging.
 
 [CHANGED]
-- Updated sprite variation UI to show visual feedback with + symbols.
-- Selected variations now display as + NAME + for clear indication of current choice.
-- Window stays open after selection allowing users to see their choice or select different variations.
-- Follower sprite updates immediately if the Pokémon is currently following you.
-- Selection is saved instantly when pressing USE button.
+- Complete framework rewrite for standalone modular architecture.
+- Framework now contains only Time submenu as built-in.
+- Migrated OVM Settings from in-menu to dedicated Mod Settings menu.
+- Settings now accessible via dedicated Mod Settings menu with proper transitions.
+- All debug logs write to ModsDebug.
 
----
+[REMOVED]
+- Removed DexNav Repeat functionality (moved to 11_DexNav.rb standalone mod).
+- Removed all DexNav-specific integrations from framework.
+- Removed mod-specific features.
+
+# Version 1.0.0
+---------------------------
+[FEATURES]
+- Initial Overworld Menu framework with party display and weather box.
+- Built-in Time changer and OVM settings menu.
+- DexNav integration and DexNav Repeat functionality.

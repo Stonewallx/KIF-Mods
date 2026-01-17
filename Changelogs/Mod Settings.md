@@ -1,4 +1,17 @@
 Mod Settings - Changelog
+# Version 3.3.4 (January 17, 2026)
+---------------------------
+[NEW]
+- Added CustomRowEnumOption class for configurable multi-row dropdown layouts
+- CustomRowEnumOption allows mods to specify custom items per row (e.g., 2 items per row instead of default 3)
+- Multi-row rendering now checks for custom items_per_row attribute to respect per-option layout preferences
+- Added version_check_url parameter for the Mod Settings self-registration to support ZIP-based mods version checking - Whoops
+- ZIP downloads now specify a separate .rb file URL for version checking (required for .zip downloads)
+- Auto-update system now detects and strips GitHub wrapper folders (e.g., RepoName-main/) when extracting ZIPs
+
+[CHANGED]
+- ZIP extraction now uses temporary folder to strip github wrapper directories before moving to destination
+
 # Version 3.2.4 (January 11, 2026)
 ---------------------------
 [NEW]

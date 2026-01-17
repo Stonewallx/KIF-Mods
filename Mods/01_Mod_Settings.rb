@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.2.4
+# Script Version: 3.3.4
 # Author: Stonewall
 #========================================
 #
@@ -871,6 +871,16 @@ end
 # Module that provides automatic spacing for multi-row dropdowns
 # Only include this in Mod Settings related scenes to avoid compatibility issues
 
+# Custom EnumOption with configurable items per row
+class CustomRowEnumOption < EnumOption
+  attr_accessor :items_per_row
+  
+  def initialize(name, values, getProc, setProc, description = "", items_per_row = 2)
+    super(name, values, getProc, setProc, description)
+    @items_per_row = items_per_row
+  end
+end
+
 # Spacer option to prevent overlap with multi-row dropdowns
 class SpacerOption < Option
   attr_reader :name
@@ -909,20 +919,29 @@ module ModSettingsSpacing
     return options unless options.is_a?(Array)
     
     result = []
-    items_per_row = 3
     
     options.each do |option|
       result << option
       
       # Check if this is an EnumOption with 4 or more values (multi-row)
-      if option.is_a?(EnumOption) && option.values && option.values.length >= 4
+      # OR if it's a CustomRowEnumOption with custom items_per_row
+      if option.is_a?(EnumOption) && option.values
         num_values = option.values.length
-        num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
-        spacers_needed = num_rows - 1
         
-        # Add the required spacers
-        spacers_needed.times do
-          result << SpacerOption.new
+        # Determine items per row (custom or default 3)
+        items_per_row = option.respond_to?(:items_per_row) && option.items_per_row ? option.items_per_row : 3
+        
+        # Check if multi-row layout will be used
+        needs_multirow = num_values >= 4 || (option.respond_to?(:items_per_row) && option.items_per_row && num_values > items_per_row)
+        
+        if needs_multirow
+          num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
+          spacers_needed = num_rows - 1
+          
+          # Add the required spacers
+          spacers_needed.times do
+            result << SpacerOption.new
+          end
         end
       end
     end
@@ -2711,10 +2730,11 @@ if defined?(Window_PokemonOption) && !defined?($modsettings_blue_color_patched)
           if @options[index].values.length > 1
             num_values = @options[index].values.length
             
-            # Check if we need multi-row layout (more than 3 options)
-            if num_values > 3
-              # Multi-row layout: 3 options per row
-              items_per_row = 3
+            # Check if we need multi-row layout (more than 3 options OR custom items_per_row set)
+            has_custom_rows = @options[index].respond_to?(:items_per_row) && @options[index].items_per_row
+            if num_values > 3 || has_custom_rows
+              # Multi-row layout: 3 options per row (or custom if specified)
+              items_per_row = has_custom_rows ? @options[index].items_per_row : 3
               num_rows = (num_values + items_per_row - 1) / items_per_row  # Ceiling division
               
               # Starting position - moved 5px right from original
@@ -4014,7 +4034,9 @@ module ModSettingsMenu
     #   :name [String] Display name (e.g., "Economy Mod")
     #   :file [String] Filename (e.g., "02_EconomyMod.rb")
     #   :version [String] Current version (e.g., "1.8.0")
-    #   :download_url [String] URL to download updates
+    #   :download_url [String] URL to download updates (.rb or .zip)
+    #   :version_check_url [String] REQUIRED for ZIP downloads - URL to .rb file for version checking
+    #                               Not needed if download_url is a .rb file
     #   :changelog_url [String] URL to view changelog
     #   :graphics [Array] Array of graphics files with :url and :path
     #   :dependencies [Array] Array of hashes with :name and :version
@@ -4031,6 +4053,7 @@ module ModSettingsMenu
         file: info[:file],
         version: info[:version] || "0.0.0",
         download_url: info[:download_url],
+        version_check_url: info[:version_check_url],  # New parameter for ZIP downloads
         changelog_url: info[:changelog_url],
         graphics: info[:graphics] || [],
         dependencies: info[:dependencies] || []
@@ -4064,16 +4087,18 @@ module ModSettingsMenu
   end
 
   module UpdateCheck
-    # Fetch the remote version from a mod's download URL
+    # Fetch the remote version from a mod's download URL or version_check_url
     # Parses the registration block to extract the version
     # Returns version string or nil on error
-    def self.fetch_remote_version(url)
-      return nil unless url
+    def self.fetch_remote_version(url, version_check_url = nil)
+      # Use version_check_url if provided (for ZIP downloads), otherwise use download_url
+      check_url = version_check_url || url
+      return nil unless check_url
       
       begin
-        ModSettingsMenu.debug_log("ModSettings: Fetching remote version from: #{url}")
+        ModSettingsMenu.debug_log("ModSettings: Fetching remote version from: #{check_url}")
         
-        response = HTTPLite.get(url)
+        response = HTTPLite.get(check_url)
         
         if response.is_a?(Hash) && response[:status] == 200
           content = response[:body]
@@ -4140,12 +4165,22 @@ module ModSettingsMenu
           reg = registered_mods[mod_file]
           
           download_url = reg[:download_url]
+          version_check_url = reg[:version_check_url]  # May be nil
           changelog_url = reg[:changelog_url]
           graphics = reg[:graphics]
           dependencies = reg[:dependencies]
           
+          # Check if download_url is a ZIP but version_check_url is missing
+          if download_url && download_url.downcase.end_with?(".zip")
+            if version_check_url.nil? || version_check_url.empty?
+              ModSettingsMenu.debug_log("ModSettings: ERROR - #{mod_file} uses ZIP download_url but is missing required version_check_url parameter")
+              ModSettingsMenu.debug_log("ModSettings: ZIP files cannot be parsed for version info. Add version_check_url pointing to the .rb file")
+            end
+          end
+          
           # Fetch the actual online version from the remote file
-          online_version = fetch_remote_version(download_url)
+          # Use version_check_url if provided (for ZIP downloads), otherwise download_url
+          online_version = fetch_remote_version(download_url, version_check_url)
           
           # If we couldn't fetch the online version, add to failed list
           unless online_version
@@ -4180,9 +4215,15 @@ module ModSettingsMenu
             dependencies: dependencies
           }
           
-          # Check version differences using semantic versioning
-          if local_major > online_major || local_minor > online_minor || local_patch > online_patch
-            # Local version is newer than registered - developer version
+          # Check version differences using semantic versioning (compare hierarchically)
+          if local_major > online_major
+            # Local major version is newer - developer version
+            results[:developer_version] << update_info
+          elsif local_major == online_major && local_minor > online_minor
+            # Major same, minor newer - developer version
+            results[:developer_version] << update_info
+          elsif local_major == online_major && local_minor == online_minor && local_patch > online_patch
+            # Major and minor same, patch newer - developer version
             results[:developer_version] << update_info
           elsif local_major < online_major
             # Major version different (X.y.z)
@@ -4280,8 +4321,8 @@ module ModSettingsMenu
   module ModUpdater
     # Get the base game directory (where Game.exe is located)
     def self.get_base_dir
-      # File.dirname(__FILE__) already gives us the game root in this environment
-      base = File.expand_path(File.dirname(__FILE__))
+      # Dir.pwd gives the actual game root directory (where Game.exe is)
+      base = File.expand_path(Dir.pwd)
       ModSettingsMenu.debug_log("ModSettings: Using base directory: #{base}")
       return base
     end
@@ -4538,7 +4579,10 @@ module ModSettingsMenu
           # When we hit a blank line, we've finished an entry
           elsif line.empty? && current_path
             # Only add if it's a file (not a directory) and not the archive itself
-            unless is_directory || current_path == zip_path || current_path.empty?
+            # Skip if it's the ZIP file path or has absolute path indicators
+            is_zip_file = current_path == zip_path || 
+                          current_path.end_with?('.zip') && (current_path.include?(':\\') || current_path.start_with?('/'))
+            unless is_directory || is_zip_file || current_path.empty?
               files << current_path
             end
             # Reset for next entry
@@ -4556,6 +4600,49 @@ module ModSettingsMenu
         ModSettingsMenu.debug_log("ModSettings: Error backtrace: #{e.backtrace.first(3).join(', ')}")
         return nil
       end
+    end
+    
+    # Detect if ZIP has a single wrapper folder (like GitHub archives)
+    # @param contents [Array<String>] List of file paths in ZIP
+    # @return [String, nil] Common folder prefix to strip, or nil if none
+    def self.detect_wrapper_folder(contents)
+      return nil if contents.nil? || contents.empty?
+      
+      ModSettingsMenu.debug_log("ModSettings: Detecting wrapper folder from #{contents.length} files")
+      
+      # Filter out any non-relative paths (shouldn't be in the list anyway)
+      relative_files = contents.select { |path| !path.include?(":\\") && !path.start_with?("/") }
+      ModSettingsMenu.debug_log("ModSettings: Relative files: #{relative_files.length}")
+      
+      return nil if relative_files.empty?
+      
+      # Get first-level folder from each path (skip files in root)
+      first_folders = relative_files.map do |path|
+        parts = path.split(/[\/\\]/)
+        parts.length > 1 ? parts[0] : nil
+      end.compact.uniq
+      
+      ModSettingsMenu.debug_log("ModSettings: First-level folders found: #{first_folders.inspect}")
+      
+      # If all files are in a single top-level folder, that's likely a wrapper
+      if first_folders.length == 1
+        wrapper = first_folders[0]
+        ModSettingsMenu.debug_log("ModSettings: Single top-level folder detected: #{wrapper}")
+        
+        # Check if it matches GitHub archive pattern (name-branch or name-main)
+        if wrapper =~ /^.+-(main|master|dev|development|\d+\.\d+)$/i
+          ModSettingsMenu.debug_log("ModSettings: Detected GitHub-style wrapper folder: #{wrapper}")
+          return wrapper
+        elsif relative_files.all? { |path| path.start_with?("#{wrapper}/") || path.start_with?("#{wrapper}\\") }
+          # Even if not GitHub pattern, if ALL files are inside this one folder, strip it
+          ModSettingsMenu.debug_log("ModSettings: Detected single wrapper folder: #{wrapper}")
+          return wrapper
+        else
+          ModSettingsMenu.debug_log("ModSettings: Not all files in wrapper, skipping")
+        end
+      end
+      
+      return nil
     end
     
     # Extract ZIP file using 7z.exe with security validation
@@ -4582,6 +4669,9 @@ module ModSettingsMenu
           ModSettingsMenu.debug_log("ModSettings: Failed to read ZIP contents")
           return false
         end
+        
+        # Detect wrapper folder
+        wrapper_folder = detect_wrapper_folder(contents)
         
         # Validate each file in the ZIP
         valid_files = []
@@ -4610,36 +4700,162 @@ module ModSettingsMenu
           return false
         end
         
-        # Ensure destination exists
-        Dir.mkdir(destination) unless Dir.exist?(destination)
-        
-        # Run 7z extraction
-        # -y: assume Yes on all queries
-        # -o: output directory
-        command = "\"#{sevenz_path}\" x \"#{zip_path}\" -o\"#{destination}\" -y"
-        ModSettingsMenu.debug_log("ModSettings: Extracting #{valid_files.length} files to: #{destination}")
-        
-        result = system(command)
-        
-        if result
-          # Verify no rejected files were extracted and remove them if present
-          rejected_files.each do |rejected|
-            full_path = File.join(destination, rejected)
-            if File.exist?(full_path)
+        # Determine extraction strategy
+        if wrapper_folder
+          # Extract to temp folder first, then move contents
+          temp_extract = File.join(get_base_dir, "temp_extract_#{Time.now.to_i}")
+          Dir.mkdir(temp_extract) unless Dir.exist?(temp_extract)
+          
+          ModSettingsMenu.debug_log("ModSettings: Extracting to temp folder to strip wrapper: #{wrapper_folder}")
+          
+          # Run 7z extraction to temp folder
+          command = "\"#{sevenz_path}\" x \"#{zip_path}\" -o\"#{temp_extract}\" -y"
+          ModSettingsMenu.debug_log("ModSettings: Running extraction command: #{command}")
+          result = system(command)
+          
+          if result
+            # Move contents from wrapper folder to destination
+            wrapper_path = File.join(temp_extract, wrapper_folder)
+            
+            if Dir.exist?(wrapper_path)
+              ModSettingsMenu.debug_log("ModSettings: Moving contents from #{wrapper_folder}/ to base directory")
+              ModSettingsMenu.debug_log("ModSettings: Wrapper path: #{wrapper_path}")
+              
+              # Recursively copy all files from wrapper to destination
+              copy_count = 0
+              Dir.glob("#{wrapper_path}/**/*").each do |source_path|
+                next if File.directory?(source_path)
+                
+                # Calculate relative path from wrapper folder (handle both / and \)
+                relative_path = source_path.sub("#{wrapper_path}#{File::SEPARATOR}", "").sub("#{wrapper_path}/", "")
+                dest_path = File.join(destination, relative_path)
+                
+                # Ensure parent directory exists (create recursively if needed)
+                dest_dir = File.dirname(dest_path)
+                unless Dir.exist?(dest_dir)
+                  # Create directory tree recursively
+                  parts = []
+                  temp_dir = dest_dir
+                  while temp_dir != destination && !Dir.exist?(temp_dir)
+                    parts.unshift(File.basename(temp_dir))
+                    temp_dir = File.dirname(temp_dir)
+                  end
+                  parts.each do |part|
+                    temp_dir = File.join(temp_dir, part)
+                    Dir.mkdir(temp_dir) unless Dir.exist?(temp_dir)
+                  end
+                end
+                
+                # Copy file
+                begin
+                  File.open(dest_path, 'wb') do |dest_file|
+                    File.open(source_path, 'rb') do |source_file|
+                      dest_file.write(source_file.read)
+                    end
+                  end
+                  copy_count += 1
+                  ModSettingsMenu.debug_log("ModSettings: Copied: #{relative_path}")
+                rescue => e
+                  ModSettingsMenu.debug_log("ModSettings: Failed to copy #{relative_path}: #{e.message}")
+                end
+              end
+              
+              ModSettingsMenu.debug_log("ModSettings: Copied #{copy_count} files")
+              
+              # Clean up temp folder - delete all files first, then directories
               begin
-                File.delete(full_path)
-                ModSettingsMenu.debug_log("ModSettings: Removed rejected file: #{rejected}")
+                Dir.glob("#{temp_extract}/**/*").reverse_each do |path|
+                  begin
+                    if File.directory?(path)
+                      Dir.rmdir(path) rescue nil
+                    else
+                      File.delete(path) rescue nil
+                    end
+                  rescue
+                    # Ignore errors during cleanup
+                  end
+                end
+                Dir.rmdir(temp_extract) rescue nil
+                ModSettingsMenu.debug_log("ModSettings: Cleaned up temp folder")
               rescue => e
-                ModSettingsMenu.debug_log("ModSettings: Failed to remove rejected file: #{rejected}")
+                ModSettingsMenu.debug_log("ModSettings: Error cleaning temp folder: #{e.message}")
+              end
+              
+              ModSettingsMenu.debug_log("ModSettings: ZIP extraction successful (wrapper stripped)")
+              return true
+            else
+              ModSettingsMenu.debug_log("ModSettings: Wrapper folder not found after extraction")
+              # Try to clean up temp folder
+              begin
+                Dir.glob("#{temp_extract}/**/*").reverse_each do |path|
+                  begin
+                    if File.directory?(path)
+                      Dir.rmdir(path) rescue nil
+                    else
+                      File.delete(path) rescue nil
+                    end
+                  rescue
+                  end
+                end
+                Dir.rmdir(temp_extract) rescue nil
+              rescue
+              end
+              return false
+            end
+          else
+            ModSettingsMenu.debug_log("ModSettings: ZIP extraction to temp failed")
+            # Clean up temp folder if it exists
+            if Dir.exist?(temp_extract)
+              begin
+                Dir.glob("#{temp_extract}/**/*").reverse_each do |path|
+                  begin
+                    if File.directory?(path)
+                      Dir.rmdir(path) rescue nil
+                    else
+                      File.delete(path) rescue nil
+                    end
+                  rescue
+                  end
+                end
+                Dir.rmdir(temp_extract) rescue nil
+              rescue
               end
             end
+            return false
           end
-          
-          ModSettingsMenu.debug_log("ModSettings: ZIP extraction successful")
-          return true
         else
-          ModSettingsMenu.debug_log("ModSettings: ZIP extraction failed")
-          return false
+          # No wrapper folder - extract directly to destination
+          Dir.mkdir(destination) unless Dir.exist?(destination)
+          
+          # Run 7z extraction
+          # -y: assume Yes on all queries
+          # -o: output directory
+          command = "\"#{sevenz_path}\" x \"#{zip_path}\" -o\"#{destination}\" -y"
+          ModSettingsMenu.debug_log("ModSettings: Extracting #{valid_files.length} files to: #{destination}")
+          ModSettingsMenu.debug_log("ModSettings: Extracting #{valid_files.length} files to: #{destination}")
+          
+          result = system(command)
+          
+          if result
+            # Verify no rejected files were extracted and remove them if present
+            rejected_files.each do |rejected|
+              full_path = File.join(destination, rejected)
+              if File.exist?(full_path)
+                begin
+                  File.delete(full_path)
+                  ModSettingsMenu.debug_log("ModSettings: Removed rejected file: #{rejected}")
+                rescue => e
+                  ModSettingsMenu.debug_log("ModSettings: Failed to remove rejected file: #{rejected}")
+                end
+              end
+            end
+            
+            ModSettingsMenu.debug_log("ModSettings: ZIP extraction successful")
+            return true
+          else
+            ModSettingsMenu.debug_log("ModSettings: ZIP extraction failed")
+            return false
+          end
         end
       rescue => e
         ModSettingsMenu.debug_log("ModSettings: ZIP extraction error: #{e.class} - #{e.message}")
@@ -5734,13 +5950,11 @@ end
 # ============================================================================
 # AUTO-UPDATE SELF-REGISTRATION
 # ============================================================================
-# Register this mod for auto-updates
-# ============================================================================
 if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Mod Settings",
     file: "01_Mod_Settings.rb",
-    version: "3.2.4",
+    version: "3.3.4",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     graphics: [],

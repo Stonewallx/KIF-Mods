@@ -1,4 +1,9 @@
 Autosort Bag - Changelog
+# Version 2.0.1 (January 14, 2026) - UNRELEASED
+---------------------------
+[FIXED]
+- Fixed transition issues when going into the submenu.
+
 # Version 2.0.0 (January 11, 2026)
 ---------------------------
 [NEW]

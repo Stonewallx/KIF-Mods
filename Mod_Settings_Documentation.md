@@ -1,5 +1,5 @@
 ﻿# Mod Settings Menu Documentation
-**Script Version:** 3.2.4
+**Script Version:** 3.3.4
 **Author:** Stonewall
 ---
 
@@ -1002,6 +1002,7 @@ if defined?(ModSettingsMenu::ModRegistry)
     file: "YourModFile.rb",          # Filename (e.g., "02_EconomyMod.rb")
     version: "X.Y.Z",                # Current version (e.g., "1.0.0")
     download_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/YourModFile.rb",
+    version_check_url: nil,          # Only required for .zip downloads - URL to .rb file for version checking
     changelog_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/Changelog.md",
     graphics: [],                    # Optional: [{url: "https://...", path: "Graphics/Pictures/file.png"}]
     dependencies: []                 # Optional: [{name: "Other Mod", version: "1.0.0"}]
@@ -1020,10 +1021,10 @@ end
 
 **How Version Checking Works:**
 1. The update checker scans your Mods folder for all .rb files
-2. For registered mods, it downloads the remote file from `download_url`
+2. For registered mods, it downloads the remote version from `download_url` (or `version_check_url` if download_url is a .zip)
 3. It parses the registration block in the downloaded file to get the online version
 4. Compares local version vs online version to determine if an update is available
-5. If update available, user can download and install automatically
+5. If update available, user can download and install automatically from `download_url`
 6. For non-registered mods, it reads the version header (if present) and displays in "Not Tracked"
 
 **Field Descriptions:**
@@ -1031,6 +1032,7 @@ end
 - `file` (required): Exact filename including .rb extension
 - `version` (required): Semantic version string (X.Y.Z)
 - `download_url` (required): Direct URL to download the .rb file (or .zip) for auto-updates
+- `version_check_url` (required for .zip downloads only): URL to the .rb file for version checking when download_url is a .zip
 - `changelog_url` (optional): URL to changelog file (markdown or text)
 - `graphics` (optional): Array of graphics files with download URL and game path (supports individual files or .zip archives)
 - `dependencies` (optional): Array of required mods with minimum versions
@@ -1039,8 +1041,9 @@ end
 Both `download_url` and `graphics` entries support ZIP files for easier packaging:
 
 ```ruby
-# Example 1: Mod distributed as ZIP
+# Example 1: Mod distributed as ZIP (requires version_check_url)
 download_url: "https://github.com/user/repo/releases/download/v1.0/MyMod.zip"
+version_check_url: "https://raw.githubusercontent.com/user/repo/main/MyMod.rb"
 # ZIP will extract to base game folder, must contain proper structure (e.g., Mods/MyMod.rb)
 
 # Example 2: Graphics as ZIP
@@ -1057,7 +1060,7 @@ graphics: [
 - All ZIP files are validated before extraction
 - Path traversal attacks (../) are blocked
 - Only allowed file types: .rb, .png, .gif, .jpg, .jpeg, .bmp, .wav, .ogg, .mp3, .mid, .txt, .md, .json, .yml, .rxdata, .rvdata, .rvdata2
-- Only allowed directories: Graphics/, Audio/, Mods/, Data/, Fonts/, PBS/, Plugins/
+- Only allowed directories: Graphics/, Audio/, Mods/, Data/, Fonts/
 - Files outside allowed zones or with unsafe extensions are automatically rejected
 - Uses 7z.exe from BaseDir\REQUIRED_BY_INSTALLER_UPDATER folder
 

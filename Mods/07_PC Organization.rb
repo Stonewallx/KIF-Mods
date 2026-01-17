@@ -2,7 +2,7 @@
 # PC Organization
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 2.0.0
+# Script Version: 2.0.1
 # Author: Stonewall
 #========================================
 
@@ -780,6 +780,17 @@ class SpacerOption < Option
 end
 
 class PCOrganizationScene < PokemonOption_Scene
+  include ModSettingsSpacing  # Enable automatic spacing
+  
+  # Menu Transition Fix: Skip fade-in to avoid double-fade (outer pbFadeOutIn handles transition)
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
   def auto_insert_spacers(options)
     return options unless options.is_a?(Array)
     
@@ -877,8 +888,8 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "PC Organization",
     file: "07_PC Organization.rb",
-    version: "2.0.0",
-    download_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Mods/07_PC%20Organization.rb",
+    version: "2.0.1",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/07_PC%20Organization.rb",
     changelog_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Changelogs/PC%20Organization.md",
     graphics: [],
     dependencies: [
