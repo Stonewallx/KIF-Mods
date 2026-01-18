@@ -12,10 +12,6 @@
 4. [Usage](#usage)
 5. [Weather Patterns](#weather-patterns)
 6. [Configuration](#configuration)
-7. [Technical Details](#technical-details)
-8. [Compatibility](#compatibility)
-9. [Troubleshooting](#troubleshooting)
-10. [Credits](#credits)
 
 ---
 
@@ -78,31 +74,17 @@ The Weather System adds dynamic, time-based weather changes to outdoor maps with
 
 ## Installation
 
-1. Download the Weather System files:
-   - `12_Weather System.rar` (Required)
+1. Download `12_Weather System.rar`
 
-2. Place files in your `KIF` folder
+2. Extract the rar file to your game's root directory
+   - The rar contains the full folder structure
+   - Files will automatically place in correct locations
 
-3. **(Optional)** Add transition graphics to:
-   ```
-   Graphics/12_Weather System/Transitions/
-   ```
-
-4. **(Optional)** Add weather sounds to:
-   ```
-   Audio/BGS/
-   Audio/SE/
-   ```
-
-5. Launch game - Weather System will auto-register with Mod Settings
+3. Launch game - Weather System will auto-register with Mod Settings
 
 ---
 
 ## Usage
-
-### Accessing Settings
-1. Open **Mod Settings Menu** (from title screen or pause menu)
-2. Navigate to **Weather System**
 
 ### Main Menu Options
 - **Weather System**: Enable/Disable the entire system
@@ -121,7 +103,7 @@ Manually set current weather to any type instantly. Useful for:
 
 #### Season Control
 - **Current Season**: View/select season (Spring, Summer, Fall, Winter)
-  - Selecting a season switches to Manual mode
+  - Switch to Manual mode first to apply.
 - **Season Mode**: Toggle between Auto (time-based) and Manual (fixed)
   - Auto: Seasons progress every 7 in-game days
   - Manual: Season stays fixed until changed
@@ -173,6 +155,8 @@ Control weather behavior on specific maps:
 ### Real Weather Mode
 Uses weighted probability transitions for natural weather flow:
 
+(Example)
+
 **Clear → Sunny (25%) / Rain (15%) / Fog (5%)**  
 **Sunny → Sunny (50%) / Clear (30%) / Sandstorm (10%)**  
 **Rain → Storm (25%) / HeavyRain (15%) / Clear (15%)**  
@@ -220,127 +204,3 @@ TRANSITION_FADE_IN_FRAMES = 60
 TRANSITION_HOLD_FRAMES = 150
 TRANSITION_FADE_OUT_FRAMES = 30
 ```
-
----
-
-## Technical Details
-
-### File Structure
-- **12_Weather System.rb** - Core weather system
-- **12a_Seasons.rb** - Seasonal patterns (optional)
-- **12b_Encounters.rb** - Seasonal encounters (optional)
-
-### Graphics Requirements
-Transition graphics (optional):
-```
-Graphics/12_Weather System/Transitions/
-  Morning.png
-  Afternoon.png
-  Evening.png
-  Night.png
-  Spring.png
-  Summer.png
-  Autumn.png
-  Winter.png
-```
-
-### Audio Requirements
-Weather background sounds:
-```
-Audio/BGS/
-  Rain.ogg
-  Storm.ogg
-  HeavyRain.ogg
-  Ice.ogg (Snow/Blizzard)
-  Sandstorm.ogg
-  Fog.ogg
-```
-
-Thunder sound effects:
-```
-Audio/SE/
-  OWThunder1.ogg
-  OWThunder2.ogg
-```
-
-### Events & Hooks
-- **onStepTaken**: Checks if weather should change
-- **onMapChange**: Reapplies stored weather, cleans up transitions
-- **onEndBattle**: Restores weather sounds after battle
-- **onMapUpdate**: Updates transition sprite animations
-- **onStartBattle**: Syncs overworld weather to battle (if enabled)
-
-### Storage Keys
-Weather system uses `$PokemonGlobal` for:
-- `weather_system_last_change_time` - Timestamp of last weather change
-- `weather_system_current_weather` - Current weather type
-- `weather_system_last_time_period` - Last time period for transition detection
-- `weather_system_last_season_displayed` - Last season for transition detection
-- `weather_system_transition_sprite` - Active transition sprite data
-
-ModSettings storage:
-- `:weather_system_enabled` - System enabled state
-- `:weather_system_real_weather` - Real weather mode
-- `:weather_system_seasons_enabled` - Seasons enabled
-- `:weather_system_battle_sync` - Battle sync enabled
-- `:weather_system_transitions_enabled` - Transitions enabled
-- `:weather_system_manual_season` - Manual season override (integer index)
-- Per-weather intensity/volume/enabled keys
-
----
-
-## Compatibility
-
-### Requirements
-- **Pokemon Essentials v20+** (or KIF/PIF equivalent)
-- **Mod Settings Menu** (for configuration)
-
-### Optional Components
-- **12a_Seasons.rb** - Enables seasonal weather patterns
-- **12b_Encounters.rb** - Enables seasonal wild encounters
-- **UnrealTime** - Provides overworld clock for season calculation
-
-### Known Conflicts
-- Maps with forced weather (via map metadata) - System respects and preserves forced weather
-- Custom weather systems - May conflict if both modify `$game_screen.weather`
-
----
-
-## Troubleshooting
-
-### Weather Not Changing
-- Check if Weather System is enabled in settings
-- Verify you're on an outdoor map (indoor detection blocks weather)
-- Check if map has forced weather in metadata
-- Verify sufficient time has passed (3 hours by default)
-
-### Weather Sounds Not Playing
-- Check weather volume settings (may be set to 0)
-- Verify audio files exist in `Audio/BGS/` directory
-- Check if audio is muted system-wide
-
-### Transitions Not Showing
-- Check if Transitions are enabled in settings
-- Verify specific transition type is enabled
-- Check if transition graphics exist in proper directory
-- Ensure not in menus/battles when transition should occur
-
-### Season Not Changing
-- Check if Seasons are enabled in settings
-- Verify 12a_Seasons.rb is present
-- Check if Manual mode is active (switch to Auto in Season Control)
-- Confirm 7 in-game days have passed
-
-### Manual Season Not Persisting
-- Ensure you're selecting a season from "Current Season" dropdown
-- Check that changes save properly (ModSettings should persist)
-- Verify season displays as "Manual" in Season Mode after selection
-
----
-
-## Credits
-- **Author**: Stonewall
-- **Version**: 2.0.0
-- **Release Date**: January 2026
-
-For updates and support, visit the GitHub repository or KIF Discord server.
