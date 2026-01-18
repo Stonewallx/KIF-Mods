@@ -1,4 +1,9 @@
 Quality Assurance - Changelog
+# Version 2.0.1 (January 18, 2026)
+---------------------------
+[FIXED]
+- Fixed auto-update links. 
+
 # Version 2.0.0 (January 17, 2026)
 ---------------------------
 [NEW]

@@ -2,7 +2,7 @@
 # Quality Assurance
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 2.0.0
+# Script Version: 2.0.1
 # Author: Stonewall
 #========================================
 # Mods included: Insta-Hatch (Credit to AnUnsocialPigeon), Remove Disobedience (Credit to AnUnsocialPigeon), Infinite Safari Steps (Credit to Laudron), 
@@ -2503,9 +2503,9 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Quality Assurance",
     file: "10_Quality Assurance.rb",
-    version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/10_Quality%20Assurance.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/Quality%20Assurance.md",
+    version: "2.0.1",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/10_Quality%20Assurance.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Quality%20Assurance.md",
     graphics: [],
     dependencies: []
   )
