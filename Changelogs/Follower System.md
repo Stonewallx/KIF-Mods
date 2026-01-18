@@ -1,4 +1,26 @@
 ﻿Follower System - Changelog
+# Version 2.1.0 (January 18, 2026)
+---------------------------
+[NEW]
+- Added Overworld Menu 2.0 integration with dedicated Follower submenu.
+- Added Left Control key support to quickly toggle follower on/off.
+- System now remembers last follower selection for quick toggle with Left Ctrl key.
+- Added "Follower System" submenu in Mod Settings (Major Systems category).
+- Added toggle setting to enable/disable Left Control key functionality.
+- Added animated sprite preview windows when selecting Pokemon to follow.
+- Added automatic party member cycling - if a Pokemon can't follow, system tries next party member automatically.
+- Added detection for triple fusions and missing sprites with appropriate error messages.
+
+[CHANGED]
+- Follower management now exclusively through Overworld Menu and Left Ctrl key.
+- Sprite variation changes now properly refresh follower display with put away/bring out sequence.
+
+[REMOVED]
+- Removed all Follower functionality from Party Screen menu.
+
+[DEPENDENCIES]
+- Added dependency: Overworld Menu v2.0.0
+
 # Version 2.0.0 (January 11, 2026)
 ---------------------------
 [NEW]

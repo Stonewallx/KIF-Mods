@@ -2,7 +2,7 @@
 # Follower System
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 2.0.0
+# Script Version: 2.1.0
 # Author: Stonewall
 #========================================
 
@@ -612,6 +612,88 @@ class Scene_Map
     def update
       update_before_follower
       
+      # Check for save switching and clear follower immediately if trainer IDs don't match
+      if defined?($Follower) && $Follower && defined?($PokemonGlobal) && defined?($Trainer)
+        saved_trainer_id = $PokemonGlobal.instance_variable_get(:@follower_trainer_id)
+        current_trainer_id = $Trainer.id rescue nil
+        
+        if saved_trainer_id && current_trainer_id && saved_trainer_id != current_trainer_id
+          # Different save detected - clear follower immediately
+          $Follower.clear_follower(false) if $Follower.respond_to?(:clear_follower)
+          $Follower = nil
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerIndex, nil)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerTrainerId, nil)
+          $PokemonGlobal.instance_variable_set(:@followerActive, false)
+          $PokemonGlobal.instance_variable_set(:@followerIndex, nil)
+        elsif !saved_trainer_id && current_trainer_id
+          # First time setting trainer ID for this save
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
+        end
+      end
+      
+      # Left Control key to toggle follower
+      if Input.trigger?(Input::CTRL) && !$game_temp.in_menu && !$game_temp.in_battle && !$game_player.moving?
+        # Check if Left Control toggle is enabled
+        ctrl_enabled = ModSettingsMenu.get(:follower_ctrl_toggle) rescue true
+        
+        if ctrl_enabled
+          follower_active = false
+          if defined?($Follower) && $Follower && $Follower.event
+            follower_active = true
+          end
+          
+          if follower_active
+            # Put away follower
+            $Follower.clear_follower
+          else
+            # Bring out last follower
+            last_index = nil
+            last_trainer_id = nil
+            current_trainer_id = $Trainer.id rescue nil
+            
+            if defined?($PokemonGlobal)
+              last_index = $PokemonGlobal.instance_variable_get(:@lastFollowerIndex) rescue nil
+              last_trainer_id = $PokemonGlobal.instance_variable_get(:@lastFollowerTrainerId) rescue nil
+            end
+            
+            # Only use saved index if trainer IDs match
+            if last_index && last_trainer_id && current_trainer_id && last_trainer_id == current_trainer_id
+              # Use saved follower index
+            else
+              # Different save or no saved trainer ID - use first party member
+              last_index = 0
+            end
+            
+            # Default to first party member if no index at all
+            last_index = 0 if !last_index && $Trainer.party.length > 0
+            
+            # Try to create follower, if it fails try next party members
+            if last_index && defined?(create_follower)
+              success = false
+              start_index = last_index
+              party_size = $Trainer.party.length
+              
+              party_size.times do |i|
+                test_index = (start_index + i) % party_size
+                next unless $Trainer.party[test_index]
+                
+                # Try to create follower with error messages shown
+                result = create_follower(test_index, false)
+                if result == true
+                  success = true
+                  break
+                end
+              end
+              
+              # Show message if no Pokemon could follow (all failed)
+              if !success
+                pbMessage(_INTL("No Pokémon in your party can follow you!"))
+              end
+            end
+          end
+        end
+      end
       
       if defined?($Follower) && $Follower && $Follower.event
         $Follower.apply_pixel_offset
@@ -1009,7 +1091,112 @@ end
 #===============================================================================
 # Follower Setup Functions
 #===============================================================================
-def setup_follower_pokemon(party_index = nil)
+def get_follower_sprite_name(follower_pokemon, party_index = nil)
+  return nil unless follower_pokemon
+  
+  # Skip triple fusions
+  if follower_pokemon.respond_to?(:is_triple_fusion?) && follower_pokemon.is_triple_fusion?
+    return nil
+  end
+  
+  follower_sprite = nil
+  
+  if follower_pokemon.species_data.is_a?(GameData::FusedSpecies)
+    head_species = follower_pokemon.species_data.head_pokemon.species
+    body_species = follower_pokemon.species_data.body_pokemon.species
+    
+    gender = follower_pokemon.gender == 1 rescue false
+    shiny = follower_pokemon.shiny? rescue false
+    form = follower_pokemon.form rescue 0
+    shadow = follower_pokemon.shadowPokemon? rescue false
+    
+    fused_species_name = follower_pokemon.species.to_s.upcase
+    base_name = generate_fused_sprite_name(head_species.to_s.upcase, body_species.to_s.upcase, gender, false, form, shadow)
+    
+    custom_fused_sprite = nil
+    use_generated = false
+    
+    stored_variation = party_index ? get_selected_sprite_variation(party_index) : nil
+    
+    if stored_variation.is_a?(Hash)
+      if stored_variation[:type] == :component
+        custom_fused_sprite = stored_variation[:folder]
+      elsif stored_variation[:type] == :generated
+        use_generated = true
+      else
+        custom_fused_sprite = "#{stored_variation[:folder]}/#{stored_variation[:name]}"
+      end
+    else
+      check_names = [base_name, fused_species_name]
+      target_folder = shiny ? "Custom Followers shiny" : "Custom Followers"
+      
+      check_names.each do |name|
+        available_variations = get_sprite_variations(name, target_folder)
+        
+        if available_variations.length > 0
+          selected_variation = available_variations[0]
+          custom_fused_sprite = "#{target_folder}/#{selected_variation}"
+          break
+        end
+      end
+      
+      if !custom_fused_sprite && shiny
+        check_names.each do |name|
+          available_variations = get_sprite_variations(name, "Custom Followers")
+          
+          if available_variations.length > 0
+            selected_variation = available_variations[0]
+            custom_fused_sprite = "Custom Followers/#{selected_variation}"
+            break
+          end
+        end
+      end
+    end
+    
+    if custom_fused_sprite
+      follower_sprite = custom_fused_sprite
+    end
+    
+    if !custom_fused_sprite || use_generated
+      fused_sprite_name = generate_fused_sprite_name(head_species, body_species, gender, shiny, form, shadow)
+      follower_sprite = "Followers/FusedPokemon/#{fused_sprite_name}"
+    end
+  end
+  
+  if !follower_sprite
+    gender = follower_pokemon.gender == 1 rescue false
+    shiny = follower_pokemon.shiny? rescue false
+    form = follower_pokemon.form rescue 0
+    species_name = follower_pokemon.species.to_s.upcase
+    form_suffix = (form && form > 0) ? "_#{form}" : ""
+    
+    if shiny
+      custom_sprite = "Custom Followers shiny/#{species_name}#{form_suffix}"
+      if check_sprite_exists_no_cache(custom_sprite)
+        follower_sprite = custom_sprite
+      end
+    end
+    
+    if !follower_sprite
+      custom_sprite = "Custom Followers/#{species_name}#{form_suffix}"
+      if check_sprite_exists_no_cache(custom_sprite)
+        follower_sprite = custom_sprite
+      end
+    end
+    
+    if !follower_sprite
+      begin
+        follower_sprite = FollowingPkmn.get_follower_sprite_name(follower_pokemon)
+      rescue
+        follower_sprite = "Followers/#{species_name}#{form_suffix}"
+      end
+    end
+  end
+  
+  return follower_sprite
+end
+
+def setup_follower_pokemon(party_index = nil, silent = false)
   return unless $Follower
   
   party_index = $Follower.follower_index if party_index.nil?
@@ -1026,6 +1213,12 @@ def setup_follower_pokemon(party_index = nil)
   
   follower_sprite = nil
   
+  # Skip triple fusions - they don't have follower sprites
+  if follower_pokemon.respond_to?(:is_triple_fusion?) && follower_pokemon.is_triple_fusion?
+    pbMessage(_INTL("Triple fusions cannot follow you!")) unless silent
+    $Follower.clear_follower
+    return false
+  end
   
   if follower_pokemon.species_data.is_a?(GameData::FusedSpecies)
     
@@ -1150,6 +1343,16 @@ def setup_follower_pokemon(party_index = nil)
   end
   
   if !follower_sprite
+    pbMessage(_INTL("{1} cannot follow you!", follower_pokemon.name)) unless silent
+    $Follower.clear_follower
+    return false
+  end
+  
+  # Verify the sprite file actually exists
+  sprite_path = "Graphics/Characters/#{follower_sprite}.png"
+  if !File.exist?(sprite_path)
+    pbMessage(_INTL("{1} cannot follow you!", follower_pokemon.name)) unless silent
+    $Follower.clear_follower
     return false
   end
   
@@ -1296,7 +1499,7 @@ def initialize_trainer_with_follower(party_index = nil)
 end
 
 
-def create_follower(party_index = nil)
+def create_follower(party_index = nil, silent = false)
   return unless $game_map && $Trainer && $Trainer.party
   return unless $Trainer.party.length > 0
   
@@ -1311,10 +1514,78 @@ def create_follower(party_index = nil)
       $Follower = FollowerPokemon.new
     end
 
-    setup_follower_pokemon(party_index)
+    result = setup_follower_pokemon(party_index, silent)
+    return result if result == false || result == nil
+    
+    # Store last follower index and trainer ID
+    if defined?($PokemonGlobal) && party_index && defined?($Trainer)
+      $PokemonGlobal.instance_variable_set(:@lastFollowerIndex, party_index)
+      $PokemonGlobal.instance_variable_set(:@lastFollowerTrainerId, $Trainer.id)
+    end
   end
+  
+  return true
 end
 
+#===============================================================================
+# Follower System Menu
+#===============================================================================
+
+def follower_system_menu
+  scene = FollowerSystemScene.new
+  screen = PokemonOptionScreen.new(scene)
+  screen.pbStartScreen
+end
+
+class FollowerSystemScene < PokemonOption_Scene
+  include ModSettingsSpacing
+  
+  def pbFadeInAndShow(sprites, visiblesprites = nil)
+    if visiblesprites
+      visiblesprites.each { |s| sprites[s].visible = true }
+    else
+      sprites.each { |key, sprite| sprite.visible = true if sprite }
+    end
+  end
+  
+  def pbGetOptions(inloadscreen = false)
+    options = []
+    
+    options << EnumOption.new(_INTL("Left Ctrl Toggle"), [_INTL("Off"), _INTL("On")],
+      proc { ModSettingsMenu.get(:follower_ctrl_toggle) ? 1 : 0 },
+      proc { |value| ModSettingsMenu.set(:follower_ctrl_toggle, value == 1) },
+      _INTL("Enable/disable Left Control key to quickly toggle follower on/off"))
+    
+    return auto_insert_spacers(options)
+  end
+  
+  def pbStartScene(inloadscreen = false)
+    super(inloadscreen)
+    
+    @sprites["title"] = Window_UnformattedTextPokemon.newWithSize(
+      _INTL("Follower System"), 0, 0, Graphics.width, 64, @viewport)
+    
+    if @sprites["option"]
+      @sprites["option"].modsettings_menu = true if @sprites["option"].respond_to?(:modsettings_menu=)
+      
+      if defined?(ModSettingsMenu) && defined?(COLOR_THEMES)
+        theme_index = ModSettingsMenu.get(:modsettings_color_theme) || 0
+        theme_key = COLOR_THEMES.keys[theme_index]
+        if theme_key
+          theme = COLOR_THEMES[theme_key]
+          if theme[:base] && theme[:shadow]
+            @sprites["option"].nameBaseColor = theme[:base]
+            @sprites["option"].nameShadowColor = theme[:shadow]
+            @sprites["option"].selBaseColor = theme[:base]
+            @sprites["option"].selShadowColor = theme[:shadow]
+          end
+        end
+      end
+      
+      @sprites["option"].refresh
+    end
+  end
+end
 
 #===============================================================================
 # Party Screen Integration
@@ -1360,7 +1631,6 @@ if defined?(PokemonPartyScreen) && !PokemonPartyScreen.method_defined?(:pbPokemo
         cmdItem = -1
         cmdRelearn = -1
         cmdFaint = -1
-        cmdFollower = -1
 
         commands[cmdSummary = commands.length] = _INTL("Summary")
         if !pkmn.egg?
@@ -1383,32 +1653,6 @@ if defined?(PokemonPartyScreen) && !PokemonPartyScreen.method_defined?(:pbPokemo
         
         if !pkmn.egg? && pkmn.hp > 0 && defined?(nuzlocke_manual_faint)
           commands[cmdFaint = commands.length] = _INTL("Faint Pokemon")
-        end
-        
-        if !pkmn.egg?
-          follower_active = false
-          current_follower_index = nil
-          
-          if defined?($Follower) && $Follower && $Follower.event
-            follower_active = true
-            current_follower_index = $Follower.follower_index
-          end
-          
-          if !follower_active && defined?($PokemonGlobal)
-            follower_active = $PokemonGlobal.instance_variable_get(:@followerActive) rescue false
-            current_follower_index = $PokemonGlobal.instance_variable_get(:@followerIndex) rescue nil
-          end
-          
-          if !follower_active
-            begin
-              if pbGetDependency("FollowerPkmn")
-                follower_active = true
-              end
-            rescue
-            end
-          end
-          
-          commands[cmdFollower = commands.length] = _INTL("Follower")
         end
         
         if !pkmn.egg?
@@ -1465,176 +1709,6 @@ if defined?(PokemonPartyScreen) && !PokemonPartyScreen.method_defined?(:pbPokemo
             end
             pbRefresh
           end
-          next
-        end
-        
-        if cmdFollower >= 0 && command == cmdFollower
-          follower_active = false
-          current_follower_index = nil
-          
-          if defined?($Follower) && $Follower && $Follower.event
-            follower_active = true
-            current_follower_index = $Follower.follower_index
-          end
-          
-          if !follower_active && defined?($PokemonGlobal)
-            follower_active = $PokemonGlobal.instance_variable_get(:@followerActive) rescue false
-            current_follower_index = $PokemonGlobal.instance_variable_get(:@followerIndex) rescue nil
-          end
-          
-          if !follower_active
-            begin
-              if pbGetDependency("FollowerPkmn")
-                follower_active = true
-              end
-            rescue
-            end
-          end
-          
-          gender = pkmn.gender == 1 rescue false
-          shiny = pkmn.shiny? rescue false
-          form = pkmn.form rescue 0
-          shadow = pkmn.shadowPokemon? rescue false
-          
-          sprite_variations = []
-          if pkmn.species_data.is_a?(GameData::FusedSpecies)
-            sprite_variations = get_fusion_sprite_variations(pkmn, pkmnid)
-          else
-            sprite_variations = get_regular_sprite_variations(pkmn, pkmnid)
-          end
-          
-          follower_commands = []
-          cmdFollowSub = -1
-          cmdPutAwaySub = -1
-          cmdSpriteVariationSub = -1
-          
-          if follower_active && current_follower_index == pkmnid
-            follower_commands[cmdPutAwaySub = follower_commands.length] = _INTL("Put Away")
-          elsif defined?(create_follower)
-            follower_commands[cmdFollowSub = follower_commands.length] = _INTL("Follow")
-          end
-          
-          follower_commands[cmdSpriteVariationSub = follower_commands.length] = _INTL("Sprite Variation")
-          
-          follower_commands[follower_commands.length] = _INTL("Cancel")
-          
-          follower_choice = pbShowCommands(_INTL("Follower options:"), follower_commands, -1)
-          
-          if cmdFollowSub >= 0 && follower_choice == cmdFollowSub
-            if defined?(create_follower)
-              create_follower(pkmnid)
-              pbDisplay(_INTL("{1} is now following you!", pkmn.name))
-            end
-          elsif cmdPutAwaySub >= 0 && follower_choice == cmdPutAwaySub
-            if defined?($Follower) && $Follower
-              $Follower.clear_follower
-              pbDisplay(_INTL("{1} returned!", pkmn.name))
-            end
-          elsif cmdSpriteVariationSub >= 0 && follower_choice == cmdSpriteVariationSub
-            if sprite_variations.length > 0
-              var_commands = []
-              sprite_variations.each do |var_data|
-                if var_data[:display_name].empty?
-                  var_commands << "Fusion (Base)"
-                else
-                  var_commands << var_data[:display_name].upcase
-                end
-              end
-              var_commands << _INTL("Cancel")
-              
-              preview = SpritePreviewWindow.new
-              
-              cmdwindow = Window_CommandPokemonEx.new(var_commands)
-              cmdwindow.z = 99999
-              cmdwindow.visible = true
-              cmdwindow.resizeToFit(cmdwindow.commands)
-              cmdwindow.x = Graphics.width - cmdwindow.width - 10
-              cmdwindow.y = Graphics.height - cmdwindow.height - 10
-              cmdwindow.index = 0
-              
-              last_index = -1
-              
-              if sprite_variations[0]
-                var_data = sprite_variations[0]
-                if var_data[:type] == :component
-                  preview.set_sprite(var_data[:folder], var_commands[0])
-                else
-                  preview.set_sprite("#{var_data[:folder]}/#{var_data[:name]}", var_commands[0])
-                end
-                last_index = 0
-              end
-              
-              selected = -1
-              loop do
-                preview.update
-                cmdwindow.update
-                
-                if cmdwindow.index >= 0 && cmdwindow.index < sprite_variations.length && cmdwindow.index != last_index
-                  var_data = sprite_variations[cmdwindow.index]
-                  if var_data[:type] == :component
-                    preview.set_sprite(var_data[:folder], var_commands[cmdwindow.index])
-                  else
-                    preview.set_sprite("#{var_data[:folder]}/#{var_data[:name]}", var_commands[cmdwindow.index])
-                  end
-                  last_index = cmdwindow.index
-                end
-                
-                if Input.trigger?(Input::BACK)
-                  pbPlayCancelSE
-                  selected = -1
-                  break
-                elsif Input.trigger?(Input::USE)
-                  if cmdwindow.index < sprite_variations.length
-                    pbPlayDecisionSE
-                    selected = cmdwindow.index
-                    
-                    # Update command list to show selection with + symbols
-                    new_commands = []
-                    sprite_variations.each_with_index do |var_data, i|
-                      if i == selected
-                        # Add + symbols around selected variation
-                        if var_data[:display_name].empty?
-                          new_commands << "+ Fusion (Base) +"
-                        else
-                          new_commands << "+ #{var_data[:display_name].upcase} +"
-                        end
-                      else
-                        if var_data[:display_name].empty?
-                          new_commands << "Fusion (Base)"
-                        else
-                          new_commands << var_data[:display_name].upcase
-                        end
-                      end
-                    end
-                    new_commands << _INTL("Cancel")
-                    
-                    cmdwindow.commands = new_commands
-                    cmdwindow.index = selected
-                    
-                    # Keep window open to show selection - don't break yet
-                  else
-                    pbPlayCancelSE
-                    selected = -1
-                    break
-                  end
-                end
-              end
-              
-              preview.dispose
-              cmdwindow.dispose
-              
-              if selected >= 0 && selected < sprite_variations.length
-                var_data = sprite_variations[selected]
-                # Store the variation data as a hash
-                set_selected_sprite_variation(pkmnid, var_data)
-                
-                if defined?($Follower) && $Follower && $Follower.follower_index == pkmnid
-                  create_follower(pkmnid)
-                end
-              end
-            end
-          end
-          
           next
         end
         
@@ -2042,10 +2116,17 @@ if defined?(Events)
         saved_trainer_id = $PokemonGlobal.instance_variable_get(:@follower_trainer_id)
         current_trainer_id = $Trainer.id rescue nil
         
-        if saved_trainer_id != current_trainer_id
+        if saved_trainer_id && current_trainer_id && saved_trainer_id != current_trainer_id
           $Follower.clear_follower(false) if $Follower.respond_to?(:clear_follower)
           $Follower = nil
-          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id) if current_trainer_id
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerIndex, nil)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerTrainerId, nil)
+          $PokemonGlobal.instance_variable_set(:@followerActive, false)
+          $PokemonGlobal.instance_variable_set(:@followerIndex, nil)
+        elsif !saved_trainer_id && current_trainer_id
+          # First time setting trainer ID for this save
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
         end
       elsif defined?($PokemonGlobal) && defined?($Trainer)
         $PokemonGlobal.instance_variable_set(:@follower_trainer_id, $Trainer.id) rescue nil
@@ -2055,6 +2136,319 @@ if defined?(Events)
   }
 end
 
+#===============================================================================
+# Overworld Menu Handler Extension
+#===============================================================================
+
+if defined?(OverworldMenuHandler)
+  class OverworldMenuHandler
+    def show_follower_menu(parent_index = 0)
+      return unless defined?($Trainer) && $Trainer && $Trainer.party && $Trainer.party.length > 0
+      
+      # Check for save switching and clear follower immediately if trainer IDs don't match
+      if defined?($Follower) && $Follower && defined?($PokemonGlobal)
+        saved_trainer_id = $PokemonGlobal.instance_variable_get(:@follower_trainer_id)
+        current_trainer_id = $Trainer.id rescue nil
+        
+        if saved_trainer_id && current_trainer_id && saved_trainer_id != current_trainer_id
+          # Different save detected - clear follower immediately
+          $Follower.clear_follower(false) if $Follower.respond_to?(:clear_follower)
+          $Follower = nil
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerIndex, nil)
+          $PokemonGlobal.instance_variable_set(:@lastFollowerTrainerId, nil)
+          $PokemonGlobal.instance_variable_set(:@followerActive, false)
+          $PokemonGlobal.instance_variable_set(:@followerIndex, nil)
+        elsif !saved_trainer_id && current_trainer_id
+          # First time setting trainer ID for this save
+          $PokemonGlobal.instance_variable_set(:@follower_trainer_id, current_trainer_id)
+        end
+      end
+      
+      # Build follower management menu
+      commands = []
+      cmdFollow = -1
+      cmdPutAway = -1
+      cmdSprite = -1
+      
+      follower_active = false
+      current_follower_index = nil
+      
+      if defined?($Follower) && $Follower && $Follower.event
+        follower_active = true
+        current_follower_index = $Follower.follower_index
+      end
+      
+      if !follower_active && defined?($PokemonGlobal)
+        follower_active = $PokemonGlobal.instance_variable_get(:@followerActive) rescue false
+        current_follower_index = $PokemonGlobal.instance_variable_get(:@followerIndex) rescue nil
+      end
+      
+      commands[cmdFollow = commands.length] = "Follow Me"
+      commands[cmdPutAway = commands.length] = "Put Away" if follower_active
+      commands[cmdSprite = commands.length] = "Sprite Variation"
+      commands[commands.length] = "Cancel"
+      
+      choice = @scene.pbShowCommands(commands, 0)
+      
+      if cmdFollow >= 0 && choice == cmdFollow
+        # Build Pokemon selection command window
+        pkmn_commands = []
+        $Trainer.party.each_with_index do |pkmn, i|
+          pkmn_commands << pkmn.name
+        end
+        pkmn_commands << _INTL("Cancel")
+        
+        # Create preview window
+        preview = SpritePreviewWindow.new(nil, :left)
+        
+        cmdwindow = Window_CommandPokemonEx.new(pkmn_commands)
+        cmdwindow.z = 99999
+        cmdwindow.visible = true
+        cmdwindow.resizeToFit(cmdwindow.commands)
+        cmdwindow.x = Graphics.width - cmdwindow.width - 10
+        cmdwindow.y = Graphics.height - cmdwindow.height - 10
+        cmdwindow.index = 0
+        
+        last_index = -1
+        
+        # Show initial preview
+        if $Trainer.party[0]
+          pkmn = $Trainer.party[0]
+          sprite_name = get_follower_sprite_name(pkmn, 0)
+          preview.set_sprite(sprite_name, pkmn.name) if sprite_name
+          last_index = 0
+        end
+        
+        chosen = -1
+        loop do
+          preview.update
+          cmdwindow.update
+          
+          # Update preview when selection changes
+          if cmdwindow.index >= 0 && cmdwindow.index < $Trainer.party.length && cmdwindow.index != last_index
+            pkmn = $Trainer.party[cmdwindow.index]
+            sprite_name = get_follower_sprite_name(pkmn, cmdwindow.index)
+            preview.set_sprite(sprite_name, pkmn.name) if sprite_name
+            last_index = cmdwindow.index
+          end
+          
+          if Input.trigger?(Input::BACK)
+            pbPlayCancelSE
+            chosen = -1
+            break
+          elsif Input.trigger?(Input::USE)
+            if cmdwindow.index < $Trainer.party.length
+              pbPlayDecisionSE
+              chosen = cmdwindow.index
+              break
+            else
+              pbPlayCancelSE
+              chosen = -1
+              break
+            end
+          end
+        end
+        
+        preview.dispose
+        cmdwindow.dispose
+        
+        if chosen >= 0 && chosen < $Trainer.party.length
+          pkmn = $Trainer.party[chosen]
+          if defined?(create_follower)
+            result = create_follower(chosen, false)
+            if result == true
+              # Store last follower index and trainer ID
+              if defined?($PokemonGlobal) && defined?($Trainer)
+                $PokemonGlobal.instance_variable_set(:@lastFollowerIndex, chosen)
+                $PokemonGlobal.instance_variable_set(:@lastFollowerTrainerId, $Trainer.id)
+              end
+              @scene.hide_party_sprites if @scene.respond_to?(:hide_party_sprites)
+              pbMessage(_INTL("{1} is now following you!", pkmn.name))
+              @scene.show_party_sprites if @scene.respond_to?(:show_party_sprites)
+            end
+          end
+        end
+      elsif cmdPutAway >= 0 && choice == cmdPutAway
+        if defined?($Follower) && $Follower
+          pkmn_name = ""
+          if $Follower.follower_index && $Trainer.party[$Follower.follower_index]
+            pkmn_name = $Trainer.party[$Follower.follower_index].name
+          end
+          $Follower.clear_follower
+          @scene.hide_party_sprites if @scene.respond_to?(:hide_party_sprites)
+          pbMessage(_INTL("{1} returned!", pkmn_name)) if pkmn_name != ""
+          @scene.show_party_sprites if @scene.respond_to?(:show_party_sprites)
+        end
+      elsif cmdSprite >= 0 && choice == cmdSprite
+        # Check if there's an active follower
+        if !defined?($Follower) || !$Follower || !$Follower.event || $Follower.follower_index.nil?
+          @scene.hide_party_sprites if @scene.respond_to?(:hide_party_sprites)
+          pbMessage(_INTL("No active follower! Use 'Follow Me' first."))
+          @scene.show_party_sprites if @scene.respond_to?(:show_party_sprites)
+          return nil
+        end
+        
+        chosen = $Follower.follower_index
+        pkmn = $Trainer.party[chosen]
+        
+        if pkmn
+          
+          # Get sprite variations for this Pokemon
+          sprite_variations = []
+          if pkmn.species_data.is_a?(GameData::FusedSpecies)
+            sprite_variations = get_fusion_sprite_variations(pkmn, chosen)
+          else
+            sprite_variations = get_regular_sprite_variations(pkmn, chosen)
+          end
+          
+          if sprite_variations.length > 0
+            var_commands = []
+            sprite_variations.each do |var_data|
+              if var_data[:display_name].empty?
+                var_commands << "Fusion (Base)"
+              else
+                var_commands << var_data[:display_name].upcase
+              end
+            end
+            var_commands << _INTL("Cancel")
+            
+            preview = SpritePreviewWindow.new
+            
+            cmdwindow = Window_CommandPokemonEx.new(var_commands)
+            cmdwindow.z = 99999
+            cmdwindow.visible = true
+            cmdwindow.resizeToFit(cmdwindow.commands)
+            cmdwindow.x = Graphics.width - cmdwindow.width - 10
+            cmdwindow.y = Graphics.height - cmdwindow.height - 10
+            cmdwindow.index = 0
+            
+            last_index = -1
+            
+            if sprite_variations[0]
+              var_data = sprite_variations[0]
+              if var_data[:type] == :component
+                preview.set_sprite(var_data[:folder], var_commands[0])
+              else
+                preview.set_sprite("#{var_data[:folder]}/#{var_data[:name]}", var_commands[0])
+              end
+              last_index = 0
+            end
+            
+            selected = -1
+            loop do
+              preview.update
+              cmdwindow.update
+              
+              if cmdwindow.index >= 0 && cmdwindow.index < sprite_variations.length && cmdwindow.index != last_index
+                var_data = sprite_variations[cmdwindow.index]
+                if var_data[:type] == :component
+                  preview.set_sprite(var_data[:folder], var_commands[cmdwindow.index])
+                else
+                  preview.set_sprite("#{var_data[:folder]}/#{var_data[:name]}", var_commands[cmdwindow.index])
+                end
+                last_index = cmdwindow.index
+              end
+              
+              if Input.trigger?(Input::BACK)
+                pbPlayCancelSE
+                selected = -1
+                break
+              elsif Input.trigger?(Input::USE)
+                if cmdwindow.index < sprite_variations.length
+                  pbPlayDecisionSE
+                  selected = cmdwindow.index
+                  break
+                else
+                  pbPlayCancelSE
+                  selected = -1
+                  break
+                end
+              end
+            end
+            
+            preview.dispose
+            cmdwindow.dispose
+            
+            if selected >= 0 && selected < sprite_variations.length
+              var_data = sprite_variations[selected]
+              # Store the variation data as a hash
+              set_selected_sprite_variation(chosen, var_data)
+              
+              # Force recreate the follower with new sprite by putting away and bringing back out
+              if defined?($Follower) && $Follower && $Follower.follower_index == chosen
+                pkmn_name = $Trainer.party[chosen].name
+                # Put away
+                $Follower.clear_follower
+                # Wait a frame
+                Graphics.update
+                # Bring back out with new sprite
+                create_follower(chosen)
+                @scene.hide_party_sprites if @scene.respond_to?(:hide_party_sprites)
+                pbMessage(_INTL("{1}'s sprite updated!", pkmn_name))
+                @scene.show_party_sprites if @scene.respond_to?(:show_party_sprites)
+              end
+            end
+          else
+            @scene.hide_party_sprites if @scene.respond_to?(:hide_party_sprites)
+            pbMessage(_INTL("No sprite variations available for {1}.", pkmn.name))
+            @scene.show_party_sprites if @scene.respond_to?(:show_party_sprites)
+          end
+        end
+      end
+      
+      return nil
+    end
+  end
+end
+
+#===============================================================================
+# Overworld Menu Registration
+#===============================================================================
+
+if defined?(OverworldMenu)
+  OverworldMenu.register(:follower, {
+    label: "Follower",
+    handler: proc { |screen|
+      screen.show_follower_menu(0)
+    },
+    priority: 15,
+    condition: proc { 
+      defined?($Trainer) && $Trainer && $Trainer.party && $Trainer.party.length > 0
+    },
+    exit_on_select: true
+  })
+end
+
+# ============================================================================
+# MOD SETTINGS REGISTRATION
+# ============================================================================
+if defined?(ModSettingsMenu)
+  # Initialize default setting
+  ModSettingsMenu.set(:follower_ctrl_toggle, true) if ModSettingsMenu.get(:follower_ctrl_toggle).nil?
+  
+  # Register the submenu button
+  reg_proc = proc {
+    ModSettingsMenu.register(:follower_system_menu, {
+      name: "Follower System",
+      type: :button,
+      description: "Configure follower Pokemon settings and Left Control key toggle",
+      on_press: proc {
+        pbFadeOutIn {
+          follower_system_menu
+        }
+      },
+      category: "Major Systems",
+      searchable: [
+        "follower", "follow", "pokemon", "ctrl", "control",
+        "toggle", "sprite", "variation"
+      ]
+    })
+  }
+  
+  reg_proc.call
+end
+
 # ============================================================================
 # AUTO-UPDATE SELF-REGISTRATION
 # ============================================================================
@@ -2062,7 +2456,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Follower System",
     file: "08_Follower System.rb",
-    version: "2.0.0",
+    version: "2.1.0",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/08_Follower%20System.rb",
     changelog_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Changelogs/Follower%20System.md",
     graphics: [
@@ -2071,7 +2465,8 @@ if defined?(ModSettingsMenu::ModRegistry)
       }
     ],
     dependencies: [
-      {name: "01_Mod_Settings", version: "3.1.4"}
+      {name: "01_Mod_Settings", version: "3.1.4"},
+      {name: "01a_Overworld_Menu", version: "2.0.0"}
     ]
   )
   
