@@ -1,19 +1,18 @@
 Quality Assurance - Changelog
-# Version 2.0.0 (January 15, 2026) - UNRELEASED
+# Version 2.0.0 (January 17, 2026)
 ---------------------------
 [NEW]
 - Added auto-update registration with Mod Settings
 - Added Overworld Menu registration at priority 40
 - Added comprehensive debug logging with "QualityAssurance:" prefix throughout all operations
-- Implemented Menu Modernization pattern with ModSettingsSpacing and pbFadeInAndShow override
-- Added color theme support (default pink) for consistent menu appearance
 - Added Disobedience toggle: Disable obedience checks so Pokemon always obey commands regardless of level/badges (Credit to AnUnsocialPigeon)
 - Added Upgraded PP toggle: Automatically maximizes PP upgrades for all party Pokemon moves to max level (ppup = 5)
 - Added Infinite PP toggle: Continuously restores all party Pokemon moves to full PP
+
 [CHANGED]
 - Updated Mod Settings category to "Quality of Life" and includes searchable keywords
 - Updated registration to use new streamlined API format
-- Refactored entire menu system from inline Window_CommandPokemon to proper Scene-based architecture
+- Migrated to Mod Settings menu creation style
 
 [FIXED]
 - Fixed Super Candy Level NumberOption displaying value +1 higher than actual stored value
