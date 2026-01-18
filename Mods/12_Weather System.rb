@@ -2042,13 +2042,10 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "Weather System",
     file: "12_Weather System.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/12_Weather%20System.rb",
+    download_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Mods/12_Weather%20System.rar",
+    version_check_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/12_Weather%20System.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/main/Changelogs/Weather%20System.md",
-    graphics: [
-      {
-        url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Graphics/12_Weather%20System.rar"
-      }
-    ],
+    graphics: [],
     dependencies: []
   )
   
