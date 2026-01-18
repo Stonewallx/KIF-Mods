@@ -9,7 +9,7 @@
 - Added toggle setting to enable/disable Left Control key functionality.
 - Added animated sprite preview windows when selecting Pokemon to follow.
 - Added automatic party member cycling - if a Pokemon can't follow, system tries next party member automatically.
-- Added detection for triple fusions and missing sprites with appropriate error messages.
+- Added detection for triple fusions and missing sprites with error messages.
 
 [CHANGED]
 - Follower management now exclusively through Overworld Menu and Left Ctrl key.
