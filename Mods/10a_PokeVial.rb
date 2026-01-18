@@ -529,10 +529,12 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "PokeVial",
     file: "10a_PokeVial.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/10a_PokeVial.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/PokeVial.md",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/10a_PokeVial.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/PokeVial.md",
     graphics: [],
-    dependencies: []
+    dependencies: [
+      { name: "01a_Overworld_Menu", version: "2.0.0" }
+    ]
   )
   
   # Log initialization with version from registration

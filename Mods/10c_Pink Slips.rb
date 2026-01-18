@@ -874,8 +874,8 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "Pink Slips",
     file: "10c_Pink Slips.rb",
     version: "2.0.0",
-    download_url: nil,
-    changelog_url: nil,
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/10c_Pink%20Slips.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Pink%20Slips.md",
     graphics: [],
     dependencies: []
   )

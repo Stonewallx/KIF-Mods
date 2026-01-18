@@ -1,5 +1,5 @@
 Pink Slips - Changelog
-# Version 2.0.0 (January 16, 2026)
+# Version 2.0.0 (January 18, 2026)
 ---------------------------
 [NEW]
 - Migrated menu system to use Mod Settings menu creation style.

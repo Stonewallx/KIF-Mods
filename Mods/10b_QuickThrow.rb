@@ -2030,8 +2030,8 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "Quick Throw",
     file: "10b_QuickThrow.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/10b_QuickThrow.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/QuickThrow.md",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/10b_QuickThrow.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/QuickThrow.md",
     graphics: [],
     dependencies: []
   )

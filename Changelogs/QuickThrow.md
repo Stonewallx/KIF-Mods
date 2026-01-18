@@ -1,5 +1,5 @@
 ﻿QuickThrow - Changelog
-# Version 2.0.0 (January 15, 2026) - UNRELEASED
+# Version 2.0.0 (January 18, 2026)
 ---------------------------
 [NEW]
 - Migrated from custom settings system to use Mod Settings menu creation style.
