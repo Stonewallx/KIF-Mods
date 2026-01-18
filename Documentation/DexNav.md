@@ -1,4 +1,4 @@
-﻿# DexNav
+﻿# DexNav Documentation
 **Script Version:** 1.0.0  
 **Author:** Stonewall  
 
