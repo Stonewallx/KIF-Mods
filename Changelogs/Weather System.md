@@ -1,4 +1,9 @@
 Weather System - Changelog
+# Version 2.1.0 (January 17, 2026) - UNRELEASED
+---------------------------
+[NEW]
+- Added registration to the Seasons and Encounters modules to read the main files version.
+
 # Version 2.0.0 (January 17, 2026)
 ---------------------------
 [NEW]
