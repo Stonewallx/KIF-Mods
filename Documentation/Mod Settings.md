@@ -1003,7 +1003,7 @@ if defined?(ModSettingsMenu::ModRegistry)
     version: "X.Y.Z",                # Current version (e.g., "1.0.0")
     download_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/YourModFile.rb",
     version_check_url: nil,          # Only required for .zip downloads - URL to .rb file for version checking
-    changelog_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/Changelog.md",
+    changelog_url: "https://raw.githubusercontent.com/YourUsername/YourRepo/main/Path/To/Changelog.md", # Top line is used as a title, so just throw your mods name at the top of the changelog file.
     graphics: [],                    # Optional: [{url: "https://...", path: "Graphics/Pictures/file.png"}]
     dependencies: []                 # Optional: [{name: "Other Mod", version: "1.0.0"}]
   )
@@ -1033,7 +1033,7 @@ end
 - `version` (required): Semantic version string (X.Y.Z)
 - `download_url` (required): Direct URL to download the .rb file (or .zip) for auto-updates
 - `version_check_url` (required for .zip downloads only): URL to the .rb file for version checking when download_url is a .zip
-- `changelog_url` (optional): URL to changelog file (markdown or text)
+- `changelog_url` (optional): URL to changelog file (markdown or text), Top line is used as a title, so just throw your mods name at the top of the changelog file.
 - `graphics` (optional): Array of graphics files with download URL and game path (supports individual files or .zip archives)
 - `dependencies` (optional): Array of required mods with minimum versions
 
@@ -1075,7 +1075,7 @@ if defined?(ModSettingsMenu::ModRegistry)
     file: "05_AdvancedBattle.rb",
     version: "2.3.1",
     download_url: "https://raw.githubusercontent.com/user/repo/main/Mods/05_AdvancedBattle.rb",
-    changelog_url: "https://raw.githubusercontent.com/user/repo/main/Changelogs/AdvancedBattle.md",
+    changelog_url: "https://raw.githubusercontent.com/user/repo/main/Changelogs/AdvancedBattle.md", 
     graphics: [
       {
         url: "https://raw.githubusercontent.com/user/repo/main/Graphics/UI/battle_hud.png",
