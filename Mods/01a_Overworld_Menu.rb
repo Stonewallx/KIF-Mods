@@ -170,19 +170,71 @@ module OverworldMenuSettings
     end
   end
 
-  def self.register_button
-    ensure_defaults
-    if defined?(ModSettingsMenu) && defined?(ButtonOption)
-      begin
-        unless ModSettingsMenu.registry.any? { |r| r[:key] == :overworld_menu_key_button }
-          btn = ButtonOption.new(_INTL("Overworld Menu Key"), proc { open_menu }, _INTL("Configure button to open Overworld Menu"))
-          ModSettingsMenu.register_option(btn, :overworld_menu_key_button)
-        end
-      rescue
-      end
-    else
-      @pending << proc { register_button }
+  # Removed - Button configuration now in OverworldMenuSettingsScene
+
+  def self.cycle_button(direction = 1)
+    buttons = [
+      Input::ACTION,
+      Input::AUX1,
+      Input::AUX2,
+      Input::SPECIAL,
+      Input::JUMPUP,
+      Input::JUMPDOWN,
+      [Input::AUX1, Input::AUX2],
+      [Input::AUX1, Input::ACTION],
+      [Input::AUX2, Input::ACTION],
+      [Input::AUX1, Input::JUMPUP],
+      [Input::AUX2, Input::JUMPUP],
+      [Input::AUX1, Input::JUMPDOWN],
+      [Input::AUX2, Input::JUMPDOWN],
+      [Input::SPECIAL, Input::ACTION],
+      [Input::JUMPUP, Input::ACTION],
+      [Input::JUMPDOWN, Input::ACTION]
+    ]
+    current = get(:overworld_menu_button)
+    
+    idx = buttons.index { |b| buttons_equal?(b, current) }
+    idx = 0 if idx.nil?
+    idx = (idx + direction) % buttons.length
+    set(:overworld_menu_button, buttons[idx])
+  end
+  
+  def self.get_button_display_name
+    button_name(get(:overworld_menu_button))
+  end
+  
+  def self.open_button_selection_menu
+    buttons = [
+      [Input::ACTION, "Z / (X)"],
+      [Input::AUX1, "Q / (L)"],
+      [Input::AUX2, "W / (R)"],
+      [Input::SPECIAL, "D / (RS)"],
+      [Input::JUMPUP, "A / (Y)"],
+      [Input::JUMPDOWN, "S / (LS)"],
+      [[Input::AUX1, Input::AUX2], "Q + W"],
+      [[Input::AUX1, Input::ACTION], "Q + Z"],
+      [[Input::AUX2, Input::ACTION], "W + Z"],
+      [[Input::AUX1, Input::JUMPUP], "Q + A"],
+      [[Input::AUX2, Input::JUMPUP], "W + A"],
+      [[Input::AUX1, Input::JUMPDOWN], "Q + S"],
+      [[Input::AUX2, Input::JUMPDOWN], "W + S"],
+      [[Input::SPECIAL, Input::ACTION], "D + Z"],
+      [[Input::JUMPUP, Input::ACTION], "A + Z"],
+      [[Input::JUMPDOWN, Input::ACTION], "S + Z"]
+    ]
+    
+    current = get(:overworld_menu_button)
+    current_idx = buttons.index { |b| buttons_equal?(b[0], current) } || 0
+    
+    commands = buttons.map { |b| b[1] }
+    commands.push(_INTL("Cancel"))
+    
+    choice = pbShowCommands(nil, commands, current_idx)
+    if choice >= 0 && choice < buttons.length
+      set(:overworld_menu_button, buttons[choice][0])
+      return true  # Refresh menu to update button name
     end
+    return false
   end
 
   def self.try_pending
@@ -222,122 +274,7 @@ module OverworldMenuSettings
     end
   end
 
-  def self.open_menu
-    ensure_defaults
-    main_index = 0
-    
-    loop do
-      enabled_text = get(:overworld_menu_enabled) ? "On" : "Off"
-      button_text = button_name(get(:overworld_menu_button))
-      
-      cmds = [
-        _INTL("Enabled: {1}", enabled_text),
-        _INTL("Open Button: {1}", button_text),
-        _INTL("Back")
-      ]
-      
-      win = Window_CommandPokemonEx.new(cmds)
-      win.z = 99999
-      win.resizeToFit(win.commands)
-      screen_w = (Graphics.width rescue 480)
-      win.width = [win.width, screen_w - 15].min
-      pbPositionNearMsgWindow(win, nil, :right) rescue nil
-      win.index = main_index
-      exit_menu = false
-      
-      loop do
-        Graphics.update
-        Input.update
-        win.update
-        
-        if Input.trigger?(Input::BACK)
-          pbPlayCancelSE
-          Input.update  
-          exit_menu = true
-          break
-        end
-        
-        if Input.trigger?(Input::USE)
-          if win.index == cmds.length - 1
-            pbPlayCancelSE
-            Input.update  
-            exit_menu = true
-            break
-          else
-            pbPlayDecisionSE
-            
-            if win.index == 0
-              set(:overworld_menu_enabled, !get(:overworld_menu_enabled))
-              enabled_text = get(:overworld_menu_enabled) ? "On" : "Off"
-              cmds[0] = _INTL("Enabled: {1}", enabled_text)
-              win.commands = cmds
-            elsif win.index == 1
-              cycle_button
-              button_text = button_name(get(:overworld_menu_button))
-              cmds[1] = _INTL("Open Button: {1}", button_text)
-              win.commands = cmds
-              win.resizeToFit(cmds)
-              screen_w = (Graphics.width rescue 480)
-              win.width = [win.width, screen_w - 15].min
-              pbPositionNearMsgWindow(win, nil, :right) rescue nil
-            end
-          end
-        elsif Input.repeat?(Input::LEFT) || Input.repeat?(Input::RIGHT)
-          if win.index < cmds.length - 1
-            pbPlayCursorSE
-            
-            if win.index == 0
-              set(:overworld_menu_enabled, !get(:overworld_menu_enabled))
-              enabled_text = get(:overworld_menu_enabled) ? "On" : "Off"
-              cmds[0] = _INTL("Enabled: {1}", enabled_text)
-              win.commands = cmds
-            elsif win.index == 1
-              dir = Input.repeat?(Input::LEFT) ? -1 : +1
-              cycle_button(dir)
-              button_text = button_name(get(:overworld_menu_button))
-              cmds[1] = _INTL("Open Button: {1}", button_text)
-              win.commands = cmds
-              win.resizeToFit(cmds)
-              screen_w = (Graphics.width rescue 480)
-              win.width = [win.width, screen_w - 15].min
-              pbPositionNearMsgWindow(win, nil, :right) rescue nil
-            end
-          end
-        end
-      end
-      
-      win.dispose if win
-      break if exit_menu
-      main_index = [main_index, cmds.length - 1].min
-    end
-  end
-
-  def self.cycle_button(direction = 1)
-    buttons = [
-      Input::ACTION,
-      Input::AUX1,
-      Input::AUX2,
-      Input::SPECIAL,
-      Input::JUMPUP,
-      Input::JUMPDOWN,
-      [Input::AUX1, Input::AUX2],
-      [Input::AUX1, Input::ACTION],
-      [Input::AUX2, Input::ACTION],
-      [Input::AUX1, Input::JUMPUP],
-      [Input::AUX2, Input::JUMPUP],
-      [Input::AUX1, Input::JUMPDOWN],
-      [Input::AUX2, Input::JUMPDOWN],
-      [Input::SPECIAL, Input::ACTION],
-      [Input::JUMPUP, Input::ACTION],
-      [Input::JUMPDOWN, Input::ACTION]
-    ]
-    current = get(:overworld_menu_button)
-    
-    idx = buttons.index { |b| buttons_equal?(b, current) }
-    idx = 0 if idx.nil?
-    idx = (idx + direction) % buttons.length
-    set(:overworld_menu_button, buttons[idx])
-  end
+  # Removed - Button configuration now in OverworldMenuSettingsScene
   
   def self.buttons_equal?(a, b)
     if a.is_a?(Array) && b.is_a?(Array)
@@ -359,17 +296,7 @@ module OverworldMenuSettings
   end
 end
 
-begin
-  OverworldMenuSettings.register_button
-rescue
-end
-
-begin
-  if defined?(ModSettingsMenu)
-    OverworldMenuSettings.try_pending
-  end
-rescue
-end
+# Button configuration integrated into OverworldMenuSettingsScene
 
 #===============================================================================
 # Scene for Overworld Menu
@@ -1028,6 +955,22 @@ class OverworldMenuSettingsScene < PokemonOption_Scene
   def pbGetOptions(inloadscreen = false)
     options = []
     
+    # Enabled Toggle
+    options << EnumOption.new(
+      _INTL("Enabled"),
+      [_INTL("Off"), _INTL("On")],
+      proc { OverworldMenuSettings.get(:overworld_menu_enabled) ? 1 : 0 },
+      proc { |value| OverworldMenuSettings.set(:overworld_menu_enabled, value == 1) },
+      _INTL("Enable or disable the Overworld Menu system.")
+    )
+    
+    # Open Button Configuration - Button that opens selection menu
+    options << ButtonOption.new(
+      _INTL("Open Button: {1}", OverworldMenuSettings.get_button_display_name),
+      proc { OverworldMenuSettings.open_button_selection_menu },
+      _INTL("Select which button or button combination opens the Overworld Menu.")
+    )
+    
     # Party View Toggle
     options << EnumOption.new(
       _INTL("Party View"),
@@ -1047,8 +990,6 @@ class OverworldMenuSettingsScene < PokemonOption_Scene
     )
     
     # Page Assignment Options for Registered Submenus
-    options << SpacerOption.new
-    
     OverworldMenu.registry.each do |entry|
       page_key = "overworld_menu_page2_#{entry[:key]}".to_sym
       
@@ -1101,10 +1042,11 @@ end
 # ============================================================================
 if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
-    name: "Overworld Menu Framework",
-    file: "12_Overworld_Menu.rb",
+    name: "Overworld Menu",
+    file: "01a_Overworld_Menu.rb",
     version: "2.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/12_Overworld_Menu.rb",
+    download_url: "https://github.com/Stonewallx/KIF-Mods/raw/refs/heads/main/Mods/01a_Overworld%20Menu.rar",
+    version_check_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01a_Overworld_Menu.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/Overworld%20Menu.md",
     graphics: [],
     dependencies: []
@@ -1112,9 +1054,9 @@ if defined?(ModSettingsMenu::ModRegistry)
   
   # Log initialization with version from registration
   begin
-    version = ModSettingsMenu::ModRegistry.all["12_Overworld_Menu.rb"][:version] rescue nil
+    version = ModSettingsMenu::ModRegistry.all["01a_Overworld_Menu.rb"][:version] rescue nil
     version_str = version ? "v#{version}" : "(version unknown)"
-    ModSettingsMenu.debug_log("OverworldMenu: Overworld Menu Framework #{version_str} loaded successfully")
+    ModSettingsMenu.debug_log("OverworldMenu: Overworld Menu #{version_str} loaded successfully")
   rescue
     # Silently fail if we can't log
   end
