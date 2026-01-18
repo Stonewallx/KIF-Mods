@@ -1,5 +1,5 @@
 ﻿DexNav System - Changelog
-# Version 1.0.0 (January 13, 2026) - UNRELEASED
+# Version 1.0.0 (January 17, 2026)
 ---------------------------
 [FEATURES]
 - Encounter Methods Supported:

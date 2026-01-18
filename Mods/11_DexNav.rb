@@ -1688,10 +1688,10 @@ if defined?(ModSettingsMenu::ModRegistry)
     name: "DexNav System",
     file: "11a_DexNav.rb",
     version: "1.0.0",
-    download_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Mods/11a_DexNav.rb",
-    changelog_url: "https://raw.githubusercontent.com/Stonewall0210/KIF-Mods/main/Changelogs/DexNav%20System.md",
+    download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/11_DexNav.rb",
+    changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/DexNav%20System.md",
     graphics: [],
-    dependencies: []
+    dependencies: ["01a_Overworld_Menu.rb"]
   )
   
   # Log initialization with version from registration
