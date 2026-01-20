@@ -1,4 +1,9 @@
 Pink Slips - Changelog
+# Version 2.0.1 (January 18, 2026) - UNRELEASED
+---------------------------
+[FIXED]
+- Removed duplicate hidden settings registrations that were appearing in Uncategorized category.
+
 # Version 2.0.0 (January 18, 2026)
 ---------------------------
 [NEW]

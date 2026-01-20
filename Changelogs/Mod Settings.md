@@ -1,4 +1,10 @@
 Mod Settings - Changelog
+# Version 3.3.5 (January 19, 2026) - UNRELEASED
+---------------------------
+[FIXED]
+- Fixed "error opening mod settings" and stuck title bar when backing out from search mode
+- Fixed mods appearing twice in search results when both the button name and searchable keywords matched the search term
+
 # Version 3.3.4 (January 17, 2026)
 ---------------------------
 [NEW]

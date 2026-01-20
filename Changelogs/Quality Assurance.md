@@ -1,4 +1,9 @@
 Quality Assurance - Changelog
+# Version 2.0.2 (January 19, 2026) - UNRELEASED
+---------------------------
+[FIXED]
+- Fixed Super Candy Mode overlapping with Super Candy Level option by adding spacer
+
 # Version 2.0.1 (January 18, 2026)
 ---------------------------
 [FIXED]
