@@ -2,7 +2,7 @@
 # DexNav
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.0.0
+# Script Version: 1.0.1
 # Author: Stonewall
 #========================================
 
@@ -536,10 +536,11 @@ module DexNav
   end
 
   def self.clear_encounter
-    # Restore repel to original count
-    if $PokemonGlobal && @active
-      ModSettingsMenu.debug_log("DexNav: Manually clearing encounter - Restoring repel to #{@repel_was_active}")
-      $PokemonGlobal.repel = @repel_was_active
+    # Set repel to 0 to re-enable wild encounters
+    # Note: If Infinite Repel is enabled in Quality Assurance, it will still block encounters
+    if $PokemonGlobal
+      ModSettingsMenu.debug_log("DexNav: Manually clearing encounter - Setting repel to 0")
+      $PokemonGlobal.repel = 0
     end
     
     # Clear active DexNav encounter
@@ -759,15 +760,30 @@ module DexNav
       water_species = []
       
       # Determine which encounter mode to use (Classic, Remix/Modern, or Randomized)
+      # Match the game's getEncounterMode() logic exactly
       encounter_mode = GameData::Encounter
-      if defined?(SWITCH_RANDOM_WILD) && defined?(SWITCH_RANDOM_WILD_AREA) && $game_switches && $game_switches[SWITCH_RANDOM_WILD] && $game_switches[SWITCH_RANDOM_WILD_AREA]
-        if defined?(GameData::EncounterRandom)
-          encounter_mode = GameData::EncounterRandom
-        end
-      elsif defined?(SWITCH_MODERN_MODE) && $game_switches && $game_switches[SWITCH_MODERN_MODE]
+      use_global_randomizer = false
+      
+      # Check for Modern/Remix mode first
+      if defined?(SWITCH_MODERN_MODE) && $game_switches && $game_switches[SWITCH_MODERN_MODE]
         if defined?(GameData::EncounterModern)
           encounter_mode = GameData::EncounterModern
         end
+      end
+      
+      # Check for Dynamic Randomiser (overrides everything)
+      if defined?(RandomizerWildPokemonOptionsScene::RANDOM_WILD_DYNAMIC) && $game_switches && $game_switches[RandomizerWildPokemonOptionsScene::RANDOM_WILD_DYNAMIC]
+        if defined?(GameData::EncounterRandom)
+          encounter_mode = GameData::EncounterRandom
+        end
+      # Check for Area randomizer (both switches on)
+      elsif defined?(SWITCH_RANDOM_WILD) && defined?(SWITCH_RANDOM_WILD_AREA) && $game_switches && $game_switches[SWITCH_RANDOM_WILD] && $game_switches[SWITCH_RANDOM_WILD_AREA]
+        if defined?(GameData::EncounterRandom)
+          encounter_mode = GameData::EncounterRandom
+        end
+      # Check for Global randomizer (only SWITCH_RANDOM_WILD on) - uses psuedoBSTHash
+      elsif defined?(SWITCH_RANDOM_WILD) && $game_switches && $game_switches[SWITCH_RANDOM_WILD] && $PokemonGlobal && $PokemonGlobal.psuedoBSTHash
+        use_global_randomizer = true
       end
       
       if map_id
@@ -787,6 +803,12 @@ module DexNav
               land_matches += 1
               enc.each do |entry|
                 species = entry[1]
+                # Apply global randomizer if active
+                if use_global_randomizer && defined?(dexNum) && $PokemonGlobal.psuedoBSTHash
+                  species_dex_num = dexNum(species)
+                  randomized = $PokemonGlobal.psuedoBSTHash[species_dex_num]
+                  species = getSpecies(randomized).species if randomized
+                end
                 # Skip starter species and their evolutions only on the starter map
                 next if map_id == 42 && DexNav.is_starter_line?(species)
                 # Skip Mew on the starter map
@@ -798,6 +820,12 @@ module DexNav
               land_matches += 1
               enc.each do |entry|
                 species = entry[1]
+                # Apply global randomizer if active
+                if use_global_randomizer && defined?(dexNum) && $PokemonGlobal.psuedoBSTHash
+                  species_dex_num = dexNum(species)
+                  randomized = $PokemonGlobal.psuedoBSTHash[species_dex_num]
+                  species = getSpecies(randomized).species if randomized
+                end
                 # Skip starter species and their evolutions only on the starter map
                 next if map_id == 42 && DexNav.is_starter_line?(species)
                 # Skip Mew on the starter map
@@ -810,6 +838,12 @@ module DexNav
               water_matches += 1
               enc.each do |entry|
                 species = entry[1]
+                # Apply global randomizer if active
+                if use_global_randomizer && defined?(dexNum) && $PokemonGlobal.psuedoBSTHash
+                  species_dex_num = dexNum(species)
+                  randomized = $PokemonGlobal.psuedoBSTHash[species_dex_num]
+                  species = getSpecies(randomized).species if randomized
+                end
                 # Skip starter species and their evolutions only on the starter map
                 next if map_id == 42 && DexNav.is_starter_line?(species)
                 # Skip Mew on the starter map
@@ -820,6 +854,12 @@ module DexNav
             elsif fishing_types.include?(type)
               enc.each do |entry|
                 species = entry[1]
+                # Apply global randomizer if active
+                if use_global_randomizer && defined?(dexNum) && $PokemonGlobal.psuedoBSTHash
+                  species_dex_num = dexNum(species)
+                  randomized = $PokemonGlobal.psuedoBSTHash[species_dex_num]
+                  species = getSpecies(randomized).species if randomized
+                end
                 # Skip starter species and their evolutions only on the starter map
                 next if map_id == 42 && DexNav.is_starter_line?(species)
                 # Skip Mew on the starter map
@@ -956,8 +996,9 @@ module DexNav
     when :walk
       coords = DexNav.find_valid_tile(:land)
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -991,8 +1032,9 @@ module DexNav
       coords = DexNav.find_valid_tile(tile_type)
       
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1010,8 +1052,9 @@ module DexNav
     when :surf
       coords = DexNav.find_valid_tile(:water)
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1447,8 +1490,9 @@ class OverworldMenuHandler
     when :walk
       coords = DexNav.find_valid_tile(:land)
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1481,8 +1525,9 @@ class OverworldMenuHandler
       coords = DexNav.find_valid_tile(tile_type)
       
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1499,8 +1544,9 @@ class OverworldMenuHandler
     when :surf
       coords = DexNav.find_valid_tile(:water)
       if coords
-        # Store current repel count and activate repel to block normal encounters
-        DexNav.repel_was_active = $PokemonGlobal.repel if $PokemonGlobal
+        # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
+        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1687,7 +1733,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "DexNav System",
     file: "11a_DexNav.rb",
-    version: "1.0.0",
+    version: "1.0.1",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/11_DexNav.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/DexNav%20System.md",
     graphics: [],

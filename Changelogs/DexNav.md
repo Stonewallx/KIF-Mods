@@ -1,4 +1,9 @@
 ﻿DexNav System - Changelog
+# Version 1.0.1 (January 19, 2026)
+---------------------------
+[FIXED]
+- Fixed DexNav not showing randomized Pokémon properly.
+
 # Version 1.0.0 (January 17, 2026)
 ---------------------------
 [FEATURES]
