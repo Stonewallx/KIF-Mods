@@ -2,7 +2,7 @@
 # DexNav
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.0.1
+# Script Version: 1.0.2
 # Author: Stonewall
 #========================================
 
@@ -536,10 +536,10 @@ module DexNav
   end
 
   def self.clear_encounter
-    # Set repel to 0 to re-enable wild encounters
-    # Note: If Infinite Repel is enabled in Quality Assurance, it will still block encounters
+    # Clear repel entirely to re-enable wild encounters
+    # This is a "reset" action, so we don't restore - we just clear everything
     if $PokemonGlobal
-      ModSettingsMenu.debug_log("DexNav: Manually clearing encounter - Setting repel to 0")
+      ModSettingsMenu.debug_log("DexNav: Clearing encounter - Setting repel to 0")
       $PokemonGlobal.repel = 0
     end
     
@@ -997,8 +997,12 @@ module DexNav
       coords = DexNav.find_valid_tile(:land)
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1033,8 +1037,12 @@ module DexNav
       
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1053,8 +1061,12 @@ module DexNav
       coords = DexNav.find_valid_tile(:water)
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1491,8 +1503,12 @@ class OverworldMenuHandler
       coords = DexNav.find_valid_tile(:land)
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1526,8 +1542,12 @@ class OverworldMenuHandler
       
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1545,8 +1565,12 @@ class OverworldMenuHandler
       coords = DexNav.find_valid_tile(:water)
       if coords
         # Store current repel count (unless Infinite Repel is active) and activate repel to block normal encounters
+        # Only store if we don't already have a stored value from a previous DexNav (avoid storing 99999)
         infinite_repel_active = (defined?(MiscMods::InfiniteRepel) && MiscMods::InfiniteRepel.enabled?) rescue false
-        DexNav.repel_was_active = infinite_repel_active ? 0 : ($PokemonGlobal.repel if $PokemonGlobal)
+        current_repel = ($PokemonGlobal.repel if $PokemonGlobal) || 0
+        if current_repel != 99999
+          DexNav.repel_was_active = infinite_repel_active ? 0 : current_repel
+        end
         $PokemonGlobal.repel = 99999 if $PokemonGlobal
         
         DexNav.active = true
@@ -1626,6 +1650,18 @@ class DexNavSettingsScene < PokemonOption_Scene
         end
       },
       _INTL("Clear the current DexNav encounter and resume normal wild encounters.")
+    )
+    
+    # Clear Repel Button
+    options << ButtonOption.new(
+      _INTL("Clear Repel"),
+      proc {
+        if $PokemonGlobal
+          $PokemonGlobal.repel = 0
+          pbMessage(_INTL("Repel cleared! Wild encounters enabled."))
+        end
+      },
+      _INTL("Reset repel to 0 to re-enable wild encounters.")
     )
     
     return auto_insert_spacers(options)
@@ -1732,8 +1768,8 @@ end
 if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "DexNav System",
-    file: "11a_DexNav.rb",
-    version: "1.0.1",
+    file: "11_DexNav.rb",
+    version: "1.0.2",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/11_DexNav.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/DexNav%20System.md",
     graphics: [],

@@ -1,4 +1,9 @@
 ﻿DexNav System - Changelog
+# Version 1.0.2 (January 25, 2026)
+---------------------------
+[FIXED]
+- Repel will no longer stay after DexNav encounters. Added a Clear Repel button for anyone not getting encounters.
+
 # Version 1.0.1 (January 19, 2026)
 ---------------------------
 [FIXED]
