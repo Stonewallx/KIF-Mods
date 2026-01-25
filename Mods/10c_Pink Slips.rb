@@ -2,7 +2,7 @@
 # Pink Slips
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 2.0.0
+# Script Version: 2.0.1
 # Author: Stonewall
 #========================================
 
@@ -19,6 +19,75 @@ module PinkSlips
   
   # Number of candidates to generate for replacements
   REPLACEMENT_CANDIDATE_COUNT = 10
+  
+  # ============================================================================
+  # Pokemon Deep Clone Helper
+  # ============================================================================
+  
+  # Generate IVs using IV Boundaries mod settings if available, else random
+  def self.generate_prize_ivs
+    # Check for IV Boundaries mod global variables (personal IVs for player-owned)
+    low_iv = 0
+    high_iv = 31
+    
+    if defined?($low_personal_iv) && defined?($high_personal_iv)
+      low_iv = $low_personal_iv || 0
+      high_iv = $high_personal_iv || 31
+    elsif defined?(IVBoundariesSettings)
+      low_iv = IVBoundariesSettings.get(:low_personal_iv) || 0
+      high_iv = IVBoundariesSettings.get(:high_personal_iv) || 31
+    end
+    
+    # Ensure bounds are valid
+    low_iv = [[low_iv, 0].max, 31].min
+    high_iv = [[high_iv, low_iv].max, 31].min
+    
+    # Generate random IV for each stat within bounds
+    ivs = {}
+    [:HP, :ATTACK, :DEFENSE, :SPECIAL_ATTACK, :SPECIAL_DEFENSE, :SPEED].each do |stat|
+      ivs[stat] = rand(low_iv..high_iv)
+    end
+    ivs
+  end
+  
+  # Clone a Pokemon for prize - reset EVs to 0, regenerate IVs per boundaries
+  def self.deep_clone_pokemon(pokemon)
+    return nil unless pokemon
+    
+    clone = pokemon.clone
+    
+    # Generate fresh IVs using IV Boundaries settings
+    new_ivs = generate_prize_ivs
+    
+    # Set IVs (handle both Hash and direct accessor styles)
+    if clone.respond_to?(:iv=)
+      clone.iv = new_ivs
+    elsif clone.instance_variable_defined?(:@iv)
+      clone.instance_variable_set(:@iv, new_ivs)
+    end
+    
+    # Reset EVs to 0 (fresh Pokemon)
+    zero_evs = {}
+    [:HP, :ATTACK, :DEFENSE, :SPECIAL_ATTACK, :SPECIAL_DEFENSE, :SPEED].each do |stat|
+      zero_evs[stat] = 0
+    end
+    
+    if clone.respond_to?(:ev=)
+      clone.ev = zero_evs
+    elsif clone.instance_variable_defined?(:@ev)
+      clone.instance_variable_set(:@ev, zero_evs)
+    end
+    
+    # Copy moves array
+    if pokemon.respond_to?(:moves) && pokemon.moves
+      clone.instance_variable_set(:@moves, pokemon.moves.map { |m| m.clone rescue m })
+    end
+    
+    # Recalculate stats to reflect new IVs and zeroed EVs
+    clone.calc_stats if clone.respond_to?(:calc_stats)
+    
+    clone
+  end
   
   # ============================================================================
   # Module State
@@ -537,8 +606,11 @@ module PinkSlips
           handle_player_defeat
         else
           ModSettingsMenu.debug_log("PinkSlips: Unexpected battle decision: #{decision}") if defined?(ModSettingsMenu)
-          cleanup
         end
+        
+        # Claim prize immediately before cleanup wipes the state
+        claim_stored_prizes if @state[:collecting]
+        
       rescue => e
         ModSettingsMenu.debug_log("PinkSlips: Error in resolve_after_battle: #{e.message}") if defined?(ModSettingsMenu)
         ModSettingsMenu.debug_log("PinkSlips: #{e.backtrace.join('\n')}") if defined?(ModSettingsMenu)
@@ -574,7 +646,7 @@ module PinkSlips
       prize = prompt_prize_selection(eligible_prizes)
       
       if prize
-        @state[:won_pokemon] = prize.clone
+        @state[:won_pokemon] = deep_clone_pokemon(prize)
         @state[:collecting] = true
         
         pbMessage(_INTL("You won {1}!", prize.name))
@@ -823,23 +895,6 @@ end
 # ============================================================================
 
 if defined?(ModSettingsMenu)
-  # Register underlying boolean settings
-  ModSettingsMenu.register(:pink_slips_enabled, {
-    name: "Enable Pink Slips",
-    type: :boolean,
-    default: true,
-    description: "Enable Pink Slips wagering system",
-    hidden: true
-  })
-  
-  ModSettingsMenu.register(:pink_slips_infinite_wagers, {
-    name: "Infinite Pink Slips Wagers",
-    type: :boolean,
-    default: false,
-    description: "Allow wagering against the same trainer multiple times",
-    hidden: true
-  })
-  
   # Register button that opens submenu
   reg_proc = proc {
     ModSettingsMenu.register(:pink_slips_menu, {
@@ -873,7 +928,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Pink Slips",
     file: "10c_Pink Slips.rb",
-    version: "2.0.0",
+    version: "2.0.1",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/10c_Pink%20Slips.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Pink%20Slips.md",
     graphics: [],
