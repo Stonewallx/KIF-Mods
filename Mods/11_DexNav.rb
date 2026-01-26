@@ -2,7 +2,7 @@
 # DexNav
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 1.0.2
+# Script Version: 1.0.3
 # Author: Stonewall
 #========================================
 
@@ -1219,7 +1219,8 @@ Events.onStepTaken += proc { |_sender, _e|
       DexNav.check_and_init_chain(species_before)
       
       # Store pending encounter for bonus application (includes current chain)
-      encounter_type = DexNav.is_grass ? :land : :cave
+      # Use terrain_type directly - :land, :cave, or :water
+      encounter_type = DexNav.terrain_type || :land
       DexNav.pending_encounter = {species: species_before, level: DexNav.level, search_level: level_before, chain: DexNav.chain, type: encounter_type}
       
       # Trigger the wild battle with DexNav's chosen species
@@ -1241,10 +1242,17 @@ Events.onStepTaken += proc { |_sender, _e|
   end
 }
 
-# Override pbGenerateWildPokemon to handle DexNav encounters ONLY
-# When DexNav is active, normal wild encounters are disabled
+#===============================================================================
+# DexNav Wild Pokemon Generation Hook
+# Uses alias to preserve original function - allows Alphas, Hordes, etc. to work
+#===============================================================================
+
+# Alias the original function to preserve it for non-DexNav encounters
+# This allows Alpha Pokemon, Hordes, and other mods to work normally
+alias pbGenerateWildPokemon_Original_DexNav pbGenerateWildPokemon
+
 def pbGenerateWildPokemon(species, level, isRoamer = false)
-  # Check if we have a pending DexNav encounter
+  # Check if we have a pending DexNav encounter that matches
   if defined?(DexNav) && DexNav.pending_encounter
     expected_type = DexNav.pending_encounter[:type]
     
@@ -1252,7 +1260,7 @@ def pbGenerateWildPokemon(species, level, isRoamer = false)
     current_type = :land  # Default
     if $PokemonGlobal
       if $PokemonGlobal.surfing
-        current_type = :surf
+        current_type = :water  # Use :water to match DexNav.terrain_type
       end
     end
     
@@ -1260,13 +1268,9 @@ def pbGenerateWildPokemon(species, level, isRoamer = false)
     is_fishing_encounter = [:OldRod, :GoodRod, :SuperRod].include?(expected_type)
     species_matches = (species == DexNav.pending_encounter[:species])
     
-    ModSettingsMenu.debug_log("DexNav: pbGenerateWildPokemon - Species: #{species}, Level: #{level}, Expected type: #{expected_type}, Current type: #{current_type}")
-    ModSettingsMenu.debug_log("DexNav: Pending encounter - Species: #{DexNav.pending_encounter[:species]}, Level: #{DexNav.pending_encounter[:level]}, Type: #{expected_type}")
-    ModSettingsMenu.debug_log("DexNav: Is fishing: #{is_fishing_encounter}, Species matches: #{species_matches}")
+    ModSettingsMenu.debug_log("DexNav: pbGenerateWildPokemon - Species: #{species}, Level: #{level}, Expected type: #{expected_type}, Current type: #{current_type}") rescue nil
     
     # Check if encounter types match
-    # - :land and :cave are compatible (both walking)
-    # - For fishing, species will match because EncounterModifier replaced it
     types_match = if is_fishing_encounter
       species_matches
     else
@@ -1274,18 +1278,16 @@ def pbGenerateWildPokemon(species, level, isRoamer = false)
       ([:land, :cave].include?(expected_type) && [:land, :cave].include?(current_type))
     end
     
-    ModSettingsMenu.debug_log("DexNav: Types match: #{types_match}")
-    
     if types_match
       # This IS the DexNav encounter - generate Pokemon with DexNav bonuses
-      ModSettingsMenu.debug_log("DexNav: Generating DexNav Pokemon with bonuses")
-      species = DexNav.pending_encounter[:species]
-      level = DexNav.pending_encounter[:level]
+      ModSettingsMenu.debug_log("DexNav: Generating DexNav Pokemon with bonuses") rescue nil
+      dex_species = DexNav.pending_encounter[:species]
+      dex_level = DexNav.pending_encounter[:level]
       search_level = DexNav.pending_encounter[:search_level]
       chain = DexNav.pending_encounter[:chain]
       
-      # Generate base Pokemon
-      pokemon = Pokemon.new(species, level)
+      # Generate base Pokemon using species/level from DexNav
+      pokemon = Pokemon.new(dex_species, dex_level)
       
       # Apply DexNav bonuses
       
@@ -1350,9 +1352,12 @@ def pbGenerateWildPokemon(species, level, isRoamer = false)
         end
       end
       
+      # DO NOT trigger onWildPokemonCreate - this prevents DexNav Pokemon from becoming Alphas
+      # DexNav encounters are targeted and should not be modified by random encounter mods
+      
       return pokemon
     else
-      # Type mismatch - clear DexNav state
+      # Type mismatch - clear DexNav state and fall through to normal generation
       DexNav.active = false
       DexNav.coords = nil
       DexNav.species = nil
@@ -1364,35 +1369,9 @@ def pbGenerateWildPokemon(species, level, isRoamer = false)
     end
   end
   
-  # Normal encounter - generate standard Pokemon with base game logic
-  pokemon = Pokemon.new(species, level)
-  
-  # Apply base game held item logic
-  items = pokemon.wildHoldItems
-  first_pkmn = $Trainer.first_pokemon
-  chances = [50, 5, 1]
-  chances = [60, 20, 5] if first_pkmn && first_pkmn.hasAbility?(:COMPOUNDEYES)
-  itemrnd = rand(100)
-  if (items[0] == items[1] && items[1] == items[2]) || itemrnd < chances[0]
-    pokemon.item = items[0]
-  elsif itemrnd < (chances[0] + chances[1])
-    pokemon.item = items[1]
-  elsif itemrnd < (chances[0] + chances[1] + chances[2])
-    pokemon.item = items[2]
-  end
-  
-  # Shiny Charm
-  if GameData::Item.exists?(:SHINYCHARM) && $PokemonBag.pbHasItem?(:SHINYCHARM)
-    2.times do
-      break if pokemon.shiny?
-      pokemon.personalID = rand(2**16) | rand(2**16) << 16
-    end
-  end
-  
-  # Pokerus
-  pokemon.givePokerus if rand(65536) < Settings::POKERUS_CHANCE rescue nil
-  
-  return pokemon
+  # NOT a DexNav encounter - use original function which triggers all events properly
+  # This allows Alphas, Hordes, and any other mods to work normally
+  return pbGenerateWildPokemon_Original_DexNav(species, level, isRoamer)
 end
 
 # Hook: Handle battle end - increment search level and chain
@@ -1769,7 +1748,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "DexNav System",
     file: "11_DexNav.rb",
-    version: "1.0.2",
+    version: "1.0.3",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/11_DexNav.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/DexNav%20System.md",
     graphics: [],

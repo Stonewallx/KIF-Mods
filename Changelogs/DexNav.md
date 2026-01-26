@@ -1,4 +1,9 @@
 ﻿DexNav System - Changelog
+# Version 1.0.3 (January 26, 2026)
+---------------------------
+[FIXED]
+- Fixed issue where Alpha Pokemon weren't showing up in random encounters. DexNav Pokemon will not be Alpha Pokemon. 
+
 # Version 1.0.2 (January 25, 2026)
 ---------------------------
 [FIXED]
