@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.3.5
+# Script Version: 3.3.6
 # Author: Stonewall
 #========================================
 #
@@ -5956,7 +5956,7 @@ if defined?(ModSettingsMenu::ModRegistry)
   ModSettingsMenu::ModRegistry.register(
     name: "Mod Settings",
     file: "01_Mod_Settings.rb",
-    version: "3.3.4",
+    version: "3.3.6",
     download_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Mods/01_Mod_Settings.rb",
     changelog_url: "https://raw.githubusercontent.com/Stonewallx/KIF-Mods/refs/heads/main/Changelogs/Mod%20Settings.md",
     graphics: [],
