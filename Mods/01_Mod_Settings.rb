@@ -2,7 +2,7 @@
 # Mod Settings Menu
 # PIF Version: 6.4.5
 # KIF Version: 0.20.7
-# Script Version: 3.3.4
+# Script Version: 3.3.5
 # Author: Stonewall
 #========================================
 #
@@ -5306,7 +5306,7 @@ if defined?(PokemonLoadScreen)
       alias modsettings_orig_pbStartLoadScreen pbStartLoadScreen
     end
     
-    # Override to add mod update check after game version check
+    # Override to add mod update check BEFORE game loads (to avoid interfering with map loading)
     def pbStartLoadScreen
       # Log that we're starting the load screen
       begin
@@ -5314,10 +5314,8 @@ if defined?(PokemonLoadScreen)
       rescue
       end
       
-      # Call original method (includes game version check)
-      modsettings_orig_pbStartLoadScreen
-      
-      # Trigger mod auto-update check if enabled
+      # Trigger mod auto-update check BEFORE loading the game
+      # This prevents interference with map loading after Game.load is called
       begin
         ModSettingsMenu.debug_log("ModSettings: Attempting to call perform_auto_update_check")
         if defined?(ModSettingsMenu) && ModSettingsMenu.respond_to?(:perform_auto_update_check)
@@ -5333,6 +5331,10 @@ if defined?(PokemonLoadScreen)
         rescue
         end
       end
+      
+      # Call original method (includes game version check and game loading)
+      # This must be called AFTER the update check to avoid state corruption
+      modsettings_orig_pbStartLoadScreen
     end
   end
 end
