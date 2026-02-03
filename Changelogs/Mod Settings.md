@@ -1,5 +1,5 @@
 Mod Settings - Changelog
-# Version 3.3.6 (January 19, 2026)
+# Version 3.3.6 (February 2, 2026)
 ---------------------------
 - Edited by Fill for Overworld Encounters. 
 
